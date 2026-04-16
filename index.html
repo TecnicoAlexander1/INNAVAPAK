@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INNAVAPAK</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  	--blue-deep:#0d2f55; 
+	--blue-mid:#1a4a7a; 
+	--blue-light:#2d6fb5;
+  	--blue-pale:#eef4fb; 
+	--card-border:#d0dcea; 
+	--card-header:#f4f7fb;
+  	--white:#ffffff; 
+	--bg-page:#f4f7fb;
+  	--text-dark:#0d2f55; 
+	--text-mid:#3a5a7a; 
+	--text-muted:#7a9ab8;
+  	--accent:#e8a020;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Barlow',sans-serif;background:var(--blue-deep);color:var(--text-dark);min-height:100vh;padding-bottom:60px;}
+
+/* LOGIN */
+#login-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--blue-deep);display:flex;align-items:center;justify-content:center;z-index:99999;padding:1rem;}
+#login-screen.hidden{display:none!important;}
+.login-card{background:var(--white);border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:360px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,0.35);}
+.login-logo{font-family:'Bebas Neue',cursive;font-size:2.8rem;letter-spacing:6px;color:var(--blue-deep);}
+.login-sub{font-family:'Barlow Condensed',sans-serif;font-size:0.82rem;letter-spacing:3px;color:var(--text-muted);text-transform:uppercase;margin-bottom:2rem;margin-top:4px;}
+.login-field{margin-bottom:1rem;}
+.login-field input{width:100%;padding:0.75rem 1rem;border:1.5px solid var(--card-border);border-radius:8px;font-family:'Barlow',sans-serif;font-size:0.95rem;outline:none;transition:border-color 0.2s;}
+.login-field input:focus{border-color:var(--blue-light);}
+.login-btn{width:100%;padding:0.75rem;background:var(--blue-mid);color:var(--white);border:none;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:background 0.15s;margin-top:0.5rem;}
+.login-btn:hover{background:var(--blue-light);}
+.login-error{color:#c00;font-size:0.85rem;margin-top:0.8rem;min-height:1.2rem;}
+
+/* HEADER */
+#header-wrapper{display:none;}
+.header-body{background:var(--blue-deep);padding:1.4rem 2.5rem;display:flex;align-items:center;gap:1.5rem;}
+.logo-box{width:85px;height:85px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);overflow:hidden;flex-shrink:0;background:var(--white);display:flex;align-items:center;justify-content:center;}
+.logo-box img{width:100%;height:100%;object-fit:contain;padding:4px;}
+.company-name{font-family:'Bebas Neue',cursive;font-size:clamp(2.4rem,5vw,4rem);color:var(--white);letter-spacing:4px;line-height:1;}
+.company-tagline{font-family:'Barlow Condensed',sans-serif;font-size:0.82rem;letter-spacing:3px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-top:4px;}
+
+/* NAV */
+nav{background:var(--blue-mid);display:flex;justify-content:center;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,0.08);}
+nav a{font-family:'Barlow Condensed',sans-serif;font-size:0.85rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.55);padding:0.75rem 1.3rem;text-decoration:none;transition:all 0.15s;border-bottom:2px solid transparent;}
+nav a:hover{color:var(--white);border-bottom-color:var(--accent);}
+
+/* PAGE */
+.page-body{display:none;background:var(--bg-page);min-height:calc(100vh - 160px);padding:2rem 1.5rem 5rem;}
+main{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:1.5rem;}
+
+/* ALERT */
+.alert-banner{background:#fffbea;border-left:4px solid var(--accent);border-radius:6px;padding:0.75rem 1.2rem;margin-bottom:0.5rem;display:flex;align-items:center;gap:0.8rem;font-size:0.87rem;color:#7a5a00;}
+.alert-banner.hidden{display:none;}
+
+/* SECTION */
+.section-card{background:var(--white);border-radius:12px;overflow:hidden;border:1px solid var(--card-border);box-shadow:0 2px 10px rgba(13,47,85,0.06);}
+.section-tab{background:var(--card-header);border-bottom:1px solid var(--card-border);padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;}
+.section-title{font-family:'Bebas Neue',cursive;font-size:1.45rem;letter-spacing:2px;color:var(--blue-deep);}
+.section-body{padding:1.5rem;}
+
+/* BUTTONS */
+.upload-btn{display:inline-flex;align-items:center;gap:6px;background:var(--blue-mid);color:var(--white);padding:0.48rem 1.1rem;border-radius:6px;font-family:'Barlow Condensed',sans-serif;font-size:0.83rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border:none;transition:background 0.15s;position:relative;}
+.upload-btn:hover{background:var(--blue-light);}
+.upload-btn input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0;}
+.add-btn{background:var(--accent);border:none;color:var(--blue-deep);padding:0.48rem 1.1rem;border-radius:6px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.85rem;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:background 0.15s;}
+.add-btn:hover{background:#f0b030;}
+.btn-remove{background:none;border:1px solid #fcc;color:#c00;border-radius:5px;padding:3px 8px;font-size:0.74rem;font-weight:700;cursor:pointer;}
+.btn-remove:hover{background:#ffeeee;}
+.btn-download{background:var(--blue-mid);color:var(--white);border:none;border-radius:5px;padding:4px 12px;font-size:0.76rem;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;text-decoration:none;display:inline-block;transition:background 0.12s;}
+.btn-download:hover{background:var(--blue-light);}
+
+/* EMPTY */
+.empty-hint{text-align:center;color:var(--text-muted);font-style:italic;padding:1.5rem;font-size:0.87rem;border:1.5px dashed var(--card-border);border-radius:8px;margin-top:0.5rem;}
+
+/* EXCEL TABLE */
+.cost-files-list{display:flex;flex-direction:column;gap:0.8rem;margin-top:1rem;}
+.cost-file-item{border:1px solid var(--card-border);border-radius:8px;overflow:hidden;}
+.cost-file-header{background:var(--blue-pale);border-bottom:1px solid var(--card-border);padding:0.6rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;}
+.cost-file-name{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.88rem;color:var(--blue-deep);}
+.excel-table-wrap{overflow-x:auto;}
+.excel-table{width:100%;border-collapse:collapse;font-size:0.81rem;}
+.excel-table th{background:var(--blue-mid);color:var(--white);padding:7px 10px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:0.81rem;}
+.excel-table td{padding:6px 10px;border-bottom:1px solid #eef2f8;color:var(--text-dark);}
+.excel-table tr:hover td{background:var(--blue-pale);}
+
+/* CLIENTS */
+.client-controls{display:flex;gap:0.8rem;align-items:center;flex-wrap:wrap;margin-bottom:1.2rem;}
+.text-input{padding:0.52rem 0.9rem;border:1.5px solid var(--card-border);border-radius:6px;font-family:'Barlow',sans-serif;font-size:0.9rem;color:var(--text-dark);background:var(--white);outline:none;transition:border-color 0.2s;min-width:200px;}
+.text-input:focus{border-color:var(--blue-light);}
+.clients-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:1rem;}
+.client-card{background:var(--white);border:1px solid var(--card-border);border-radius:10px;overflow:hidden;cursor:pointer;transition:all 0.15s;position:relative;box-shadow:0 1px 4px rgba(13,47,85,0.05);}
+.client-card:hover{box-shadow:0 4px 16px rgba(13,47,85,0.12);transform:translateY(-2px);}
+.client-card-header{background:var(--blue-pale);border-bottom:1px solid var(--card-border);padding:0.75rem 1rem;display:flex;align-items:center;justify-content:space-between;}
+.client-name{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.95rem;letter-spacing:1px;color:var(--blue-deep);text-transform:uppercase;}
+.client-badge{background:var(--blue-mid);color:var(--white);font-size:0.63rem;padding:2px 7px;border-radius:4px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;}
+.client-card-body{padding:0.7rem 1rem;font-size:0.81rem;color:var(--text-mid);}
+.client-file-count{font-weight:600;color:var(--blue-light);}
+.btn-delete-client{position:absolute;top:6px;right:6px;background:rgba(200,0,0,0.08);border:none;color:#c00;font-size:0.9rem;border-radius:50%;width:22px;height:22px;cursor:pointer;display:none;align-items:center;justify-content:center;}
+.client-card:hover .btn-delete-client{display:flex;}
+
+/* WORD FILES */
+.word-file-item{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:0.75rem 1rem;border:1px solid var(--card-border);border-radius:8px;background:var(--blue-pale);flex-wrap:wrap;margin-top:0.8rem;}
+.word-file-info{display:flex;align-items:center;gap:10px;}
+.word-icon{font-size:1.4rem;}
+.word-filename{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.88rem;color:var(--blue-deep);}
+.word-filesize{font-size:0.73rem;color:var(--text-muted);}
+.word-btn-row{display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;}
+.remision-zone{border:1.5px dashed var(--card-border);border-radius:8px;padding:1.5rem;text-align:center;background:#fafcff;margin-top:1rem;}
+.remision-zone.has-file{border-style:solid;border-color:var(--blue-light);text-align:left;background:var(--blue-pale);}
+.remision-hint{color:var(--text-muted);font-size:0.87rem;margin-bottom:0.8rem;}
+
+/* CALENDAR */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;flex-wrap:wrap;gap:0.5rem;}
+.cal-nav-btn{background:var(--blue-mid);color:var(--white);border:none;border-radius:6px;padding:0.4rem 1rem;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.85rem;letter-spacing:1px;cursor:pointer;transition:background 0.12s;}
+.cal-nav-btn:hover{background:var(--blue-light);}
+.cal-month-title{font-family:'Bebas Neue',cursive;font-size:1.5rem;letter-spacing:3px;color:var(--blue-deep);}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+.cal-day-header{text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.72rem;letter-spacing:1px;color:var(--text-muted);padding:6px 0;text-transform:uppercase;}
+.cal-cell{min-height:68px;border:1px solid #eef2f8;border-radius:6px;padding:4px;background:var(--white);cursor:pointer;transition:background 0.12s;}
+.cal-cell:hover{background:var(--blue-pale);}
+.cal-cell.other-month{background:#fafafa;opacity:0.45;cursor:default;}
+.cal-cell.today{border:1.5px solid var(--blue-light);background:var(--blue-pale);}
+.cal-day-num{font-size:0.76rem;font-weight:700;color:var(--text-mid);margin-bottom:2px;}
+.cal-event{background:var(--blue-mid);color:var(--white);border-radius:3px;padding:2px 4px;font-size:0.66rem;margin-bottom:1px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'Barlow Condensed',sans-serif;}
+.cal-event.status-entregado{background:#2e7d32;}
+.cal-event.status-cancelado{background:#c62828;}
+.upcoming-list{display:flex;flex-direction:column;gap:0.5rem;margin-top:1rem;}
+.upcoming-item{display:flex;align-items:center;gap:1rem;padding:0.7rem 1rem;border:1px solid var(--card-border);border-radius:8px;background:var(--white);cursor:pointer;transition:all 0.12s;flex-wrap:wrap;}
+.upcoming-item:hover{background:var(--blue-pale);}
+.upcoming-date{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.88rem;color:var(--blue-deep);min-width:80px;}
+.upcoming-client{font-weight:600;font-size:0.86rem;color:var(--text-dark);}
+.upcoming-desc{font-size:0.76rem;color:var(--text-muted);}
+.status-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:0.7rem;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+.status-badge.pendiente{background:#e3f2fd;color:#1565c0;}
+.status-badge.entregado{background:#e8f5e9;color:#2e7d32;}
+.status-badge.cancelado{background:#ffebee;color:#c62828;}
+
+/* MODALS */
+.del-modal-overlay,.cot-overlay,.modal-overlay{position:fixed;inset:0;background:rgba(10,37,64,0.65);z-index:2000;display:none;align-items:center;justify-content:center;padding:1rem;overflow-y:auto;}
+.del-modal-overlay.open,.cot-overlay.open,.modal-overlay.open{display:flex;}
+.del-modal-box,.cot-box,.modal-box{background:var(--white);border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,0.2);width:100%;max-height:90vh;overflow-y:auto;animation:modalIn 0.2s ease;}
+.del-modal-box{max-width:460px;}
+.cot-box{max-width:680px;}
+.modal-box{max-width:860px;}
+@keyframes modalIn{from{opacity:0;transform:scale(0.96) translateY(16px);}to{opacity:1;transform:scale(1) translateY(0);}}
+.del-modal-header,.cot-header,.modal-header{background:var(--card-header);border-bottom:1px solid var(--card-border);padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;border-radius:14px 14px 0 0;}
+.del-modal-title,.cot-title,.modal-title{font-family:'Bebas Neue',cursive;font-size:1.4rem;letter-spacing:2px;color:var(--blue-deep);}
+.modal-close{background:var(--blue-deep);border:none;color:var(--white);font-size:1rem;width:30px;height:30px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:bold;transition:background 0.12s;}
+.modal-close:hover{background:var(--blue-light);}
+.del-modal-body,.cot-body,.modal-body{padding:1.5rem;}
+.modal-upload-row{display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem;flex-wrap:wrap;}
+.modal-files-list{display:flex;flex-direction:column;gap:0.8rem;}
+.del-field label{display:block;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.78rem;letter-spacing:1px;color:var(--text-mid);margin-bottom:4px;text-transform:uppercase;}
+.del-field input,.del-field select,.del-field textarea{width:100%;padding:0.58rem 0.9rem;border:1.5px solid var(--card-border);border-radius:6px;font-family:'Barlow',sans-serif;font-size:0.9rem;color:var(--text-dark);outline:none;transition:border-color 0.2s;background:var(--white);}
+.del-field input:focus,.del-field select:focus{border-color:var(--blue-light);}
+.del-btn-row{display:flex;gap:0.8rem;justify-content:flex-end;flex-wrap:wrap;}
+.del-save-btn{background:var(--blue-mid);color:var(--white);border:none;border-radius:6px;padding:0.52rem 1.4rem;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.88rem;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:background 0.12s;}
+.del-save-btn:hover{background:var(--blue-light);}
+.del-delete-btn{background:#fff0f0;border:1px solid #fcc;color:#c00;border-radius:6px;padding:0.52rem 1rem;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.88rem;letter-spacing:1px;text-transform:uppercase;cursor:pointer;}
+.del-delete-btn:hover{background:#fcc;}
+
+/* COTIZACIONES */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;}
+.form-grid.full{grid-template-columns:1fr;}
+.form-field{display:flex;flex-direction:column;gap:4px;}
+.form-field label{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.78rem;letter-spacing:1px;color:var(--text-mid);text-transform:uppercase;}
+.form-field input,.form-field select,.form-field textarea{padding:0.52rem 0.9rem;border:1.5px solid var(--card-border);border-radius:6px;font-family:'Barlow',sans-serif;font-size:0.9rem;color:var(--text-dark);outline:none;transition:border-color 0.2s;background:var(--white);}
+.form-field input:focus,.form-field select:focus{border-color:var(--blue-light);}
+.items-table{width:100%;border-collapse:collapse;font-size:0.82rem;margin:1rem 0;}
+.items-table th{background:var(--blue-mid);color:var(--white);padding:7px 10px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:0.81rem;}
+.items-table td{padding:6px 8px;border-bottom:1px solid #eef2f8;vertical-align:middle;}
+.items-table td input{border:1px solid var(--card-border);border-radius:4px;padding:4px 6px;font-size:0.81rem;width:100%;}
+.total-row{display:flex;justify-content:flex-end;align-items:center;gap:1rem;margin-top:0.5rem;}
+.total-label{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.95rem;letter-spacing:1px;color:var(--text-mid);}
+.total-amount{font-family:'Bebas Neue',cursive;font-size:1.8rem;letter-spacing:2px;color:var(--blue-deep);}
+.doc-list{display:flex;flex-direction:column;gap:0.5rem;margin-top:1rem;}
+.doc-item{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:0.75rem 1rem;border:1px solid var(--card-border);border-radius:8px;background:var(--white);flex-wrap:wrap;cursor:pointer;transition:all 0.12s;}
+.doc-item:hover{background:var(--blue-pale);box-shadow:0 2px 8px rgba(13,47,85,0.07);}
+.doc-item-num{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.92rem;color:var(--blue-deep);letter-spacing:1px;}
+.doc-item-detail{font-size:0.76rem;color:var(--text-muted);margin-top:2px;}
+
+/* HISTORIAL */
+.history-list{display:flex;flex-direction:column;gap:0.4rem;margin-top:1rem;}
+.history-item{display:flex;gap:1rem;padding:0.65rem 1rem;border-left:3px solid var(--blue-light);background:var(--blue-pale);border-radius:0 6px 6px 0;flex-wrap:wrap;}
+.history-time{font-size:0.73rem;color:var(--text-muted);min-width:130px;font-family:'Barlow Condensed',sans-serif;}
+.history-who{font-weight:600;font-size:0.82rem;color:var(--blue-deep);}
+.history-what{font-size:0.82rem;color:var(--text-mid);}
+
+/* SAVE BAR */
+#save-bar{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--blue-deep);border-top:1px solid rgba(255,255,255,0.08);padding:0.6rem 2rem;align-items:center;justify-content:space-between;z-index:500;gap:1rem;flex-wrap:wrap;}
+.save-status{font-size:0.8rem;color:rgba(255,255,255,0.38);font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;}
+.save-status.ok{color:#6ec96e;}
+.save-status.err{color:#ff7070;}
+.save-btn{background:#2e7d32;color:var(--white);border:none;border-radius:6px;padding:0.48rem 1.4rem;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.85rem;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:background 0.12s;}
+.save-btn:hover{background:#388e3c;}
+.logout-btn{background:transparent;border:1px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.4);border-radius:6px;padding:0.38rem 1rem;font-family:'Barlow Condensed',sans-serif;font-size:0.78rem;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all 0.12s;}
+.logout-btn:hover{border-color:rgba(255,255,255,0.45);color:rgba(255,255,255,0.65);}
+
+/* FOOTER */
+footer{background:var(--blue-deep);border-top:1px solid rgba(255,255,255,0.06);padding:1.4rem 2rem;text-align:center;}
+.footer-logo{font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:4px;color:rgba(255,255,255,0.4);margin-bottom:0.3rem;}
+.footer-admin{font-family:'Barlow Condensed',sans-serif;font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.22);}
+.footer-name{font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.38);margin:2px 0;}
+.footer-copy{font-size:0.7rem;color:rgba(255,255,255,0.13);margin-top:0.5rem;}
+
+@media(max-width:600px){
+  .header-body{padding:1rem;flex-direction:column;text-align:center;}
+  .page-body{padding:1rem 0.8rem 4rem;}
+  nav a{padding:0.6rem 0.9rem;font-size:0.78rem;}
+  .form-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">INNAVAPAK</div>
+    <div class="login-sub">Acceso Administrativo</div>
+    <div class="login-field"><input type="password" id="login-password" placeholder="Contraseña de acceso" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="login-btn" onclick="doLogin()">Entrar</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<div id="header-wrapper">
+<header>
+  <div class="header-body">
+    <div class="logo-box">
+      <img src="data:image/jpeg;base64,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" alt="Logo INNAVAPAK">
+    </div>
+    <div>
+      <div class="company-name">INNAVAPAK</div>
+      <div class="company-tagline">Soluciones de Empaque e Innovación</div>
+    </div>
+  </div>
+</header>
+<nav>
+  <a href="#tabla-costos">📋 Tabla de Costos</a>
+  <a href="#codigos-cliente">📦 Códigos de Cliente</a>
+  <a href="#certificaciones">✅ Certificaciones</a>
+  <a href="#remisiones">📄 Remisiones</a>
+  <a href="#calendario">📅 Entregas</a>
+  <a href="#cotizaciones">📝 Cotizaciones</a>
+  <a href="#ordenes">🛒 Órdenes</a>
+  <a href="#historial">🕑 Historial</a>
+</nav>
+</div>
+
+<div class="page-body" id="page-content">
+<div class="alert-banner hidden" id="alert-banner">⚠️ <span id="alert-text"></span></div>
+<main>
+
+  <section class="section-card" id="tabla-costos">
+    <div class="section-tab">
+      <span class="section-title">📋 Tabla de Costos</span>
+      <label class="upload-btn">⬆ Subir Excel<input type="file" accept=".xlsx,.xls,.csv" multiple onchange="loadCostFiles(event)"></label>
+    </div>
+    <div class="section-body">
+      <p style="color:var(--text-muted);font-size:0.87rem;margin-bottom:0.5rem;">Carga uno o varios archivos Excel con tus tablas de costos.</p>
+      <div id="cost-files-container"><div class="empty-hint">Sin archivos. Usa "Subir Excel" para comenzar.</div></div>
+    </div>
+  </section>
+
+  <section class="section-card" id="codigos-cliente">
+    <div class="section-tab"><span class="section-title">📦 Códigos de Cliente</span></div>
+    <div class="section-body">
+      <div class="client-controls">
+        <input class="text-input" type="text" id="new-client-name" placeholder="Nombre del cliente..." maxlength="50">
+        <button class="add-btn" onclick="addClient()">+ Agregar</button>
+      </div>
+      <div class="clients-grid" id="clients-grid">
+        <div class="empty-hint" style="grid-column:1/-1;">No hay clientes. Escribe un nombre y agrega.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-card" id="certificaciones">
+    <div class="section-tab">
+      <span class="section-title">✅ Certificaciones de Calidad</span>
+      <label class="upload-btn">⬆ Agregar Certificado<input type="file" accept=".doc,.docx,.pdf" multiple onchange="loadCertFiles(event)"></label>
+    </div>
+    <div class="section-body">
+      <p style="color:var(--text-muted);font-size:0.87rem;">Agrega documentos Word o PDF de certificaciones.</p>
+      <div id="cert-files-container"><div class="empty-hint">Sin certificados.</div></div>
+    </div>
+  </section>
+
+  <section class="section-card" id="remisiones">
+    <div class="section-tab"><span class="section-title">📄 Remisiones</span></div>
+    <div class="section-body">
+      <p style="color:var(--text-muted);font-size:0.87rem;">Un solo archivo activo de remisión.</p>
+      <div id="remision-zone" class="remision-zone">
+        <div class="remision-hint">No hay remisión cargada.</div>
+        <label class="upload-btn">⬆ Subir Remisión<input type="file" accept=".doc,.docx,.pdf" onchange="loadRemision(event)"></label>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-card" id="calendario">
+    <div class="section-tab">
+      <span class="section-title">📅 Calendario de Entregas</span>
+      <button class="add-btn" onclick="openDeliveryModal()">+ Nueva Entrega</button>
+    </div>
+    <div class="section-body">
+      <div class="cal-nav">
+        <button class="cal-nav-btn" onclick="changeMonth(-1)">&#8592; Anterior</button>
+        <span class="cal-month-title" id="cal-title">Mes Año</span>
+        <button class="cal-nav-btn" onclick="changeMonth(1)">Siguiente &#8594;</button>
+      </div>
+      <div class="cal-grid" id="cal-grid">
+        <div class="cal-day-header">Dom</div><div class="cal-day-header">Lun</div>
+        <div class="cal-day-header">Mar</div><div class="cal-day-header">Mie</div>
+        <div class="cal-day-header">Jue</div><div class="cal-day-header">Vie</div>
+        <div class="cal-day-header">Sab</div>
+      </div>
+      <div style="margin-top:1.5rem;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.9rem;letter-spacing:1px;color:var(--text-mid);margin-bottom:0.5rem;">PRÓXIMAS ENTREGAS</div>
+        <div class="upcoming-list" id="upcoming-list"><div class="empty-hint" style="margin-top:0;">No hay entregas registradas.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-card" id="cotizaciones">
+    <div class="section-tab">
+      <span class="section-title">📝 Cotizaciones</span>
+      <button class="add-btn" onclick="openCotModal()">+ Nueva Cotización</button>
+    </div>
+    <div class="section-body">
+      <p style="color:var(--text-muted);font-size:0.87rem;">Genera y guarda cotizaciones para tus clientes.</p>
+      <div class="doc-list" id="cot-list"><div class="empty-hint">Sin cotizaciones. Crea una nueva.</div></div>
+    </div>
+  </section>
+
+  <section class="section-card" id="ordenes">
+    <div class="section-tab">
+      <span class="section-title">🛒 Órdenes de Compra</span>
+      <button class="add-btn" onclick="openOrdenModal()">+ Nueva Orden</button>
+    </div>
+    <div class="section-body">
+      <p style="color:var(--text-muted);font-size:0.87rem;">Registra y da seguimiento a tus órdenes de compra.</p>
+      <div class="doc-list" id="orden-list"><div class="empty-hint">Sin órdenes. Crea una nueva.</div></div>
+    </div>
+  </section>
+
+  <section class="section-card" id="historial">
+    <div class="section-tab">
+      <span class="section-title">🕑 Historial de Cambios</span>
+      <button class="add-btn" onclick="clearHistory()">🗑 Limpiar</button>
+    </div>
+    <div class="section-body">
+      <p style="color:var(--text-muted);font-size:0.87rem;">Registro de quién modificó qué y cuándo.</p>
+      <div class="history-list" id="history-list"><div class="empty-hint">Sin cambios registrados aún.</div></div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<footer>
+  <div class="footer-logo">INNAVAPAK</div>
+  <div class="footer-admin">Administrador del sistema</div>
+  <div class="footer-name">Jaime Alexander Arce Jasso</div>
+  <div class="footer-copy">&copy; 2025 INNAVAPAK · Todos los derechos reservados</div>
+</footer>
+
+<div id="save-bar">
+  <span style="font-size:0.78rem;color:rgba(255,255,255,0.35);font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;">INNAVAPAK · Panel Administrativo</span>
+  <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+    <span class="save-status" id="save-status">Sin cambios guardados</span>
+    <button class="save-btn" onclick="saveData()">&#128190; Guardar Información</button>
+    <button class="logout-btn" onclick="doLogout()">Salir</button>
+  </div>
+</div>
+
+<!-- DELIVERY MODAL -->
+<div class="del-modal-overlay" id="delivery-modal">
+  <div class="del-modal-box">
+    <div class="del-modal-header"><div class="del-modal-title" id="del-modal-title">Nueva Entrega</div><button class="modal-close" onclick="closeDeliveryModal()">✕</button></div>
+    <div class="del-modal-body">
+      <input type="hidden" id="del-id">
+      <div class="del-field"><label>Cliente</label><input type="text" id="del-client" placeholder="Nombre del cliente..."></div>
+      <div class="del-field"><label>Descripción / Producto</label><textarea id="del-desc" style="resize:vertical;min-height:60px;" placeholder="Describe la entrega..."></textarea></div>
+      <div class="del-field"><label>Fecha y Hora</label><input type="datetime-local" id="del-date"></div>
+      <div class="del-field"><label>Estado</label><select id="del-status"><option value="pendiente">Pendiente</option><option value="entregado">Entregado</option><option value="cancelado">Cancelado</option></select></div>
+      <div class="del-btn-row" style="margin-top:1rem;">
+        <button class="del-delete-btn" id="del-delete-btn" onclick="deleteDelivery()" style="display:none;">Eliminar</button>
+        <button class="del-save-btn" onclick="saveDelivery()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL COTIZACION -->
+<div class="cot-overlay" id="cot-modal">
+  <div class="cot-box">
+    <div class="cot-header"><div class="cot-title" id="cot-modal-title">Nueva Cotización</div><button class="modal-close" onclick="closeCotModal()">✕</button></div>
+    <div class="cot-body">
+      <input type="hidden" id="cot-id">
+      <div class="form-grid">
+        <div class="form-field"><label>Cliente</label><input type="text" id="cot-client" placeholder="Nombre del cliente"></div>
+        <div class="form-field"><label>Fecha</label><input type="date" id="cot-date"></div>
+        <div class="form-field"><label>Vigencia</label><input type="date" id="cot-valid"></div>
+        <div class="form-field"><label>Estado</label><select id="cot-status"><option value="pendiente">Pendiente</option><option value="aprobada">Aprobada</option><option value="rechazada">Rechazada</option></select></div>
+      </div>
+      <div class="form-grid full"><div class="form-field"><label>Notas</label><textarea id="cot-notes" rows="2" placeholder="Observaciones..."></textarea></div></div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.8rem;letter-spacing:1px;color:var(--text-mid);text-transform:uppercase;margin-bottom:0.5rem;">Productos / Servicios</div>
+      <table class="items-table"><thead><tr><th>Descripción</th><th style="width:75px">Cant.</th><th style="width:100px">Precio</th><th style="width:100px">Total</th><th style="width:36px"></th></tr></thead><tbody id="cot-items-body"></tbody></table>
+      <button class="upload-btn" style="margin-bottom:1rem;" onclick="addCotItem()">+ Línea</button>
+      <div class="total-row"><span class="total-label">TOTAL:</span><span class="total-amount" id="cot-total">$0.00</span></div>
+      <div class="del-btn-row" style="margin-top:1.5rem;">
+        <button class="del-delete-btn" id="cot-delete-btn" onclick="deleteCot()" style="display:none;">Eliminar</button>
+        <button class="del-save-btn" onclick="saveCot()">Guardar Cotización</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ORDEN -->
+<div class="cot-overlay" id="orden-modal">
+  <div class="cot-box">
+    <div class="cot-header"><div class="cot-title" id="orden-modal-title">Nueva Orden de Compra</div><button class="modal-close" onclick="closeOrdenModal()">✕</button></div>
+    <div class="cot-body">
+      <input type="hidden" id="orden-id">
+      <div class="form-grid">
+        <div class="form-field"><label>Proveedor</label><input type="text" id="orden-supplier" placeholder="Nombre del proveedor"></div>
+        <div class="form-field"><label>Fecha</label><input type="date" id="orden-date"></div>
+        <div class="form-field"><label>Fecha de entrega</label><input type="date" id="orden-delivery"></div>
+        <div class="form-field"><label>Estado</label><select id="orden-status"><option value="pendiente">Pendiente</option><option value="enviada">Enviada</option><option value="recibida">Recibida</option><option value="cancelada">Cancelada</option></select></div>
+      </div>
+      <div class="form-grid full"><div class="form-field"><label>Notas</label><textarea id="orden-notes" rows="2" placeholder="Observaciones..."></textarea></div></div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.8rem;letter-spacing:1px;color:var(--text-mid);text-transform:uppercase;margin-bottom:0.5rem;">Productos</div>
+      <table class="items-table"><thead><tr><th>Descripción</th><th style="width:75px">Cant.</th><th style="width:100px">Precio</th><th style="width:100px">Total</th><th style="width:36px"></th></tr></thead><tbody id="orden-items-body"></tbody></table>
+      <button class="upload-btn" style="margin-bottom:1rem;" onclick="addOrdenItem()">+ Línea</button>
+      <div class="total-row"><span class="total-label">TOTAL:</span><span class="total-amount" id="orden-total">$0.00</span></div>
+      <div class="del-btn-row" style="margin-top:1.5rem;">
+        <button class="del-delete-btn" id="orden-delete-btn" onclick="deleteOrden()" style="display:none;">Eliminar</button>
+        <button class="del-save-btn" onclick="saveOrden()">Guardar Orden</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CLIENTE -->
+<div class="modal-overlay" id="client-modal">
+  <div class="modal-box">
+    <div class="modal-header"><div class="modal-title" id="modal-client-title">Cliente</div><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="modal-upload-row">
+        <label class="upload-btn">⬆ Subir archivo Excel<input type="file" accept=".xlsx,.xls,.csv" multiple onchange="loadClientFile(event)"></label>
+        <span style="font-size:0.84rem;color:var(--text-muted);">Archivos de este cliente.</span>
+      </div>
+      <div class="modal-files-list" id="modal-files-list"><div class="empty-hint">Este cliente no tiene archivos todavía.</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// SUPABASE
+const { createClient } = supabase;
+const sb = createClient('https://aukirjjgqtrltltvpnpf.supabase.co', 'sb_publishable_ojyK26oMQICdgFy-FiC6-g_ppuwbrqq');
+
+// LOGIN
+const ACCESS_PASSWORD = 'innavapak2026';
+function doLogin() {
+  const pass = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  if (pass === ACCESS_PASSWORD) {
+    sessionStorage.setItem('innavapak_auth','1');
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('header-wrapper').style.display = 'block';
+    document.getElementById('page-content').style.display = 'block';
+    document.getElementById('save-bar').style.display = 'flex';
+    loadData();
+  } else {
+    errEl.textContent = 'Contraseña incorrecta.';
+    document.getElementById('login-password').value = '';
+    document.getElementById('login-password').focus();
+  }
+}
+function doLogout() { sessionStorage.removeItem('innavapak_auth'); location.reload(); }
+window.addEventListener('DOMContentLoaded', function() {
+  if (sessionStorage.getItem('innavapak_auth') === '1') {
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('header-wrapper').style.display = 'block';
+    document.getElementById('page-content').style.display = 'block';
+    document.getElementById('save-bar').style.display = 'flex';
+    loadData();
+  }
+  renderCalendar(); renderUpcoming();
+  document.getElementById('delivery-modal').addEventListener('click', function(e) { if(e.target===this) closeDeliveryModal(); });
+  document.getElementById('cot-modal').addEventListener('click', function(e) { if(e.target===this) closeCotModal(); });
+  document.getElementById('orden-modal').addEventListener('click', function(e) { if(e.target===this) closeOrdenModal(); });
+  document.getElementById('client-modal').addEventListener('click', function(e) { if(e.target===this) closeModal(); });
+});
+
+// EXCEL
+function parseExcel(file, cb) {
+  const r = new FileReader();
+  r.onload = e => { const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'}); const ws = wb.Sheets[wb.SheetNames[0]]; cb(XLSX.utils.sheet_to_json(ws, {header:1, defval:''})); };
+  r.readAsArrayBuffer(file);
+}
+function renderTable(rows) {
+  if (!rows||!rows.length) return '<p style="color:#aaa;padding:1rem;">Archivo vacío.</p>';
+  const h=rows[0], b=rows.slice(1);
+  let s='<div class="excel-table-wrap"><table class="excel-table"><thead><tr>';
+  h.forEach(c => s+=`<th>${c}</th>`);
+  s+='</tr></thead><tbody>';
+  b.forEach(row => { s+='<tr>'; h.forEach((_,i) => s+=`<td>${row[i]??''}</td>`); s+='</tr>'; });
+  return s+'</tbody></table></div>';
+}
+function fmtSize(b) { if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
+function docIcon(name) { return name.toLowerCase().endsWith('.pdf') ? '📕' : '📘'; }
+
+// COST FILES
+let costFiles=[];
+function loadCostFiles(e) { Array.from(e.target.files).forEach(f => parseExcel(f, rows => { costFiles.push({name:f.name,rows,_file:f}); renderCostFiles(); })); e.target.value=''; }
+function removeCostFile(i) { costFiles.splice(i,1); renderCostFiles(); }
+function renderCostFiles() {
+  const c=document.getElementById('cost-files-container');
+  if (!costFiles.length) { c.innerHTML='<div class="empty-hint">Sin archivos. Usa "Subir Excel" para comenzar.</div>'; return; }
+  c.innerHTML='<div class="cost-files-list">'+costFiles.map((f,i) => `<div class="cost-file-item"><div class="cost-file-header"><span class="cost-file-name">📄 ${f.name}</span><button class="btn-remove" onclick="removeCostFile(${i})">✕ Quitar</button></div>${renderTable(f.rows)}</div>`).join('')+'</div>';
+}
+
+// CERT FILES
+let certFiles=[];
+function loadCertFiles(e) { Array.from(e.target.files).forEach(f => { certFiles.push({name:f.name,size:f.size,url:URL.createObjectURL(f),_file:f}); renderCertFiles(); }); e.target.value=''; }
+function removeCertFile(i) { certFiles.splice(i,1); renderCertFiles(); }
+function renderCertFiles() {
+  const c=document.getElementById('cert-files-container');
+  if (!certFiles.length) { c.innerHTML='<div class="empty-hint">Sin certificados.</div>'; return; }
+  c.innerHTML=certFiles.map((f,i) => `<div class="word-file-item"><div class="word-file-info"><span class="word-icon">${docIcon(f.name)}</span><div><div class="word-filename">${f.name}</div><div class="word-filesize">${fmtSize(f.size)}</div></div></div><div class="word-btn-row"><a class="btn-download" href="${f.url}" download="${f.name}">⬇ Descargar</a><button class="btn-remove" onclick="removeCertFile(${i})">✕</button></div></div>`).join('');
+}
+
+// REMISION
+let remisionFile=null;
+function loadRemision(e) {
+  const f=e.target.files[0]; if(!f) return;
+  if(remisionFile&&remisionFile.url&&remisionFile.url.startsWith('blob:')) URL.revokeObjectURL(remisionFile.url);
+  remisionFile={name:f.name,size:f.size,url:URL.createObjectURL(f),_file:f};
+  renderRemision(); e.target.value='';
+}
+function removeRemision() { remisionFile=null; renderRemision(); }
+function renderRemision() {
+  const zone=document.getElementById('remision-zone');
+  if (!remisionFile) {
+    zone.className='remision-zone';
+    zone.innerHTML='<div class="remision-hint">No hay remisión cargada.</div><label class="upload-btn">⬆ Subir Remisión<input type="file" accept=".doc,.docx,.pdf" onchange="loadRemision(event)"></label>';
+    return;
+  }
+  zone.className='remision-zone has-file';
+  zone.innerHTML=`<div class="word-file-item" style="margin:0;border:none;background:transparent;padding:0;"><div class="word-file-info"><span class="word-icon">${docIcon(remisionFile.name)}</span><div><div class="word-filename">${remisionFile.name}</div><div class="word-filesize">${fmtSize(remisionFile.size)}</div></div></div><div class="word-btn-row"><a class="btn-download" href="${remisionFile.url}" download="${remisionFile.name}">⬇ Descargar</a><label class="upload-btn" style="padding:4px 10px;font-size:0.76rem;">🔄 Reemplazar<input type="file" accept=".doc,.docx,.pdf" onchange="loadRemision(event)"></label><button class="btn-remove" onclick="removeRemision()">✕</button></div></div>`;
+}
+
+// CLIENTS
+let clients={}, activeClientId=null;
+function addClient() {
+  const inp=document.getElementById('new-client-name');
+  const name=inp.value.trim(); if(!name){inp.focus();return;}
+  clients['c'+Date.now()]={name,files:[]}; inp.value=''; renderClientsGrid();
+  logHistory('Administrador','Cliente "'+name+'" agregado');
+}
+function renderClientsGrid() {
+  const grid=document.getElementById('clients-grid'), ids=Object.keys(clients);
+  if(!ids.length){grid.innerHTML='<div class="empty-hint" style="grid-column:1/-1;">No hay clientes.</div>';return;}
+  grid.innerHTML='';
+  ids.forEach(id => {
+    const c=clients[id], card=document.createElement('div');
+    card.className='client-card';
+    card.innerHTML=`<div class="client-card-header"><span class="client-name">${c.name}</span><span class="client-badge">CLIENTE</span></div><div class="client-card-body"><span class="client-file-count">${c.files.length}</span> archivo(s)<br><small style="color:#8aaac8;">Clic para ver</small></div><button class="btn-delete-client" onclick="deleteClient(event,'${id}')">✕</button>`;
+    card.addEventListener('click', ()=>openModal(id));
+    grid.appendChild(card);
+  });
+}
+function deleteClient(e,id) {
+  e.stopPropagation();
+  if(confirm('¿Eliminar a "'+clients[id].name+'"?')) {
+    logHistory('Administrador','Cliente "'+clients[id].name+'" eliminado');
+    delete clients[id]; renderClientsGrid();
+  }
+}
+function openModal(id) {
+  activeClientId=id;
+  document.getElementById('modal-client-title').textContent='📦 '+clients[id].name;
+  renderModalFiles();
+  document.getElementById('client-modal').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeModal() { document.getElementById('client-modal').classList.remove('open'); document.body.style.overflow=''; activeClientId=null; }
+function loadClientFile(e) {
+  if(!activeClientId) return;
+  Array.from(e.target.files).forEach(f => parseExcel(f, rows => { clients[activeClientId].files.push({name:f.name,rows}); renderModalFiles(); renderClientsGrid(); }));
+  e.target.value='';
+}
+function removeClientFile(i) { clients[activeClientId].files.splice(i,1); renderModalFiles(); renderClientsGrid(); }
+function renderModalFiles() {
+  const list=document.getElementById('modal-files-list'), c=clients[activeClientId];
+  if(!c||!c.files.length){list.innerHTML='<div class="empty-hint">Sin archivos todavía.</div>';return;}
+  list.innerHTML=c.files.map((f,i)=>`<div class="cost-file-item"><div class="cost-file-header"><span class="cost-file-name">📄 ${f.name}</span><button class="btn-remove" onclick="removeClientFile(${i})">✕ Quitar</button></div>${renderTable(f.rows)}</div>`).join('');
+}
+document.addEventListener('DOMContentLoaded', ()=>{ const inp=document.getElementById('new-client-name'); if(inp) inp.addEventListener('keydown', e=>{ if(e.key==='Enter') addClient(); }); });
+
+// HISTORIAL
+let historial=[];
+function logHistory(quien,que) {
+  historial.unshift({id:'h'+Date.now(),quien,que,cuando:new Date().toLocaleString('es-MX')});
+  if(historial.length>100) historial=historial.slice(0,100);
+  renderHistory();
+}
+function renderHistory() {
+  const list=document.getElementById('history-list');
+  if(!historial.length){list.innerHTML='<div class="empty-hint">Sin cambios registrados aún.</div>';return;}
+  list.innerHTML=historial.map(h=>`<div class="history-item"><div class="history-time">${h.cuando}</div><div><div class="history-who">${h.quien}</div><div class="history-what">${h.que}</div></div></div>`).join('');
+}
+function clearHistory() { if(confirm('¿Limpiar todo el historial?')){historial=[];renderHistory();} }
+
+// ALERTAS
+function checkAlerts() {
+  const banner=document.getElementById('alert-banner'), alertText=document.getElementById('alert-text');
+  const now=new Date(), soon=new Date(now.getTime()+24*60*60*1000);
+  const proximas=Object.values(deliveries).filter(d=>{if(!d.date||d.status==='entregado'||d.status==='cancelado') return false; const dt=new Date(d.date); return dt>=now&&dt<=soon;});
+  if(proximas.length>0){alertText.textContent=proximas.length+' entrega(s) en las próximas 24h: '+proximas.map(d=>d.client||'Sin cliente').join(', ');banner.classList.remove('hidden');}
+  else banner.classList.add('hidden');
+}
+
+// RESPALDO AUTO
+function autoBackup() {
+  try { localStorage.setItem('innavapak_bkp_'+new Date().toISOString().split('T')[0], JSON.stringify({clients,costFiles:costFiles.map(f=>{return{name:f.name,rows:f.rows}})  ,deliveries,cotizaciones,ordenes})); } catch(e) {}
+}
+setInterval(autoBackup, 5*60*1000);
+
+// CALENDARIO
+let deliveries={}, currentYear=new Date().getFullYear(), currentMonth=new Date().getMonth();
+const MONTHS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+function changeMonth(dir) { currentMonth+=dir; if(currentMonth>11){currentMonth=0;currentYear++;} if(currentMonth<0){currentMonth=11;currentYear--;} renderCalendar(); }
+function renderCalendar() {
+  document.getElementById('cal-title').textContent=MONTHS[currentMonth]+' '+currentYear;
+  const grid=document.getElementById('cal-grid');
+  while(grid.children.length>7) grid.removeChild(grid.lastChild);
+  const firstDay=new Date(currentYear,currentMonth,1).getDay();
+  const daysInMonth=new Date(currentYear,currentMonth+1,0).getDate();
+  const daysInPrev=new Date(currentYear,currentMonth,0).getDate();
+  const today=new Date();
+  for(let i=firstDay-1;i>=0;i--){ const cell=document.createElement('div'); cell.className='cal-cell other-month'; cell.innerHTML='<div class="cal-day-num">'+(daysInPrev-i)+'</div>'; grid.appendChild(cell); }
+  for(let d=1;d<=daysInMonth;d++) {
+    const cell=document.createElement('div');
+    const isToday=(d===today.getDate()&&currentMonth===today.getMonth()&&currentYear===today.getFullYear());
+    cell.className='cal-cell'+(isToday?' today':'');
+    cell.innerHTML='<div class="cal-day-num">'+d+'</div>';
+    const dateStr=currentYear+'-'+String(currentMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    Object.values(deliveries).forEach(del=>{ if(del.date&&del.date.startsWith(dateStr)){ const ev=document.createElement('div'); ev.className='cal-event status-'+(del.status||'pendiente'); ev.textContent=del.client||'Entrega'; ev.onclick=e=>{e.stopPropagation();openDeliveryModal(del.id);}; cell.appendChild(ev); } });
+    cell.onclick=()=>openDeliveryModalForDate(dateStr);
+    grid.appendChild(cell);
+  }
+  const totalCells=firstDay+daysInMonth, remaining=totalCells%7===0?0:7-(totalCells%7);
+  for(let i=1;i<=remaining;i++){ const cell=document.createElement('div'); cell.className='cal-cell other-month'; cell.innerHTML='<div class="cal-day-num">'+i+'</div>'; grid.appendChild(cell); }
+}
+function renderUpcoming() {
+  const list=document.getElementById('upcoming-list'), now=new Date();
+  const upcoming=Object.values(deliveries).filter(d=>d.date&&new Date(d.date)>=now).sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(0,8);
+  if(!upcoming.length){list.innerHTML='<div class="empty-hint" style="margin-top:0;">No hay entregas próximas.</div>';return;}
+  list.innerHTML=upcoming.map(d=>{const dt=new Date(d.date); return`<div class="upcoming-item" onclick="openDeliveryModal('${d.id}')"><div class="upcoming-date">${dt.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'})}<br><span style="font-size:0.72rem;color:var(--text-muted)">${dt.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})}</span></div><div style="flex:1"><div class="upcoming-client">${d.client||'Sin cliente'}</div><div class="upcoming-desc">${d.desc||''}</div></div><span class="status-badge ${d.status||'pendiente'}">${d.status||'pendiente'}</span></div>`;}).join('');
+}
+function openDeliveryModal(id) {
+  const del=id?deliveries[id]:null;
+  document.getElementById('del-modal-title').textContent=del?'Editar Entrega':'Nueva Entrega';
+  document.getElementById('del-id').value=id||'';
+  document.getElementById('del-client').value=del?del.client:'';
+  document.getElementById('del-desc').value=del?del.desc:'';
+  document.getElementById('del-date').value=del?del.date:'';
+  document.getElementById('del-status').value=del?del.status:'pendiente';
+  document.getElementById('del-delete-btn').style.display=del?'inline-block':'none';
+  document.getElementById('delivery-modal').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function openDeliveryModalForDate(dateStr) { openDeliveryModal(null); document.getElementById('del-date').value=dateStr+'T09:00'; }
+function closeDeliveryModal() { document.getElementById('delivery-modal').classList.remove('open'); document.body.style.overflow=''; }
+function saveDelivery() {
+  const id=document.getElementById('del-id').value||('del_'+Date.now());
+  deliveries[id]={id, client:document.getElementById('del-client').value.trim(), desc:document.getElementById('del-desc').value.trim(), date:document.getElementById('del-date').value, status:document.getElementById('del-status').value};
+  logHistory('Administrador','Entrega '+(deliveries[id].client||'sin cliente')+' '+(document.getElementById('del-id').value?'editada':'creada'));
+  closeDeliveryModal(); renderCalendar(); renderUpcoming();
+}
+function deleteDelivery() {
+  const id=document.getElementById('del-id').value; if(!id) return;
+  if(confirm('¿Eliminar esta entrega?')){ logHistory('Administrador','Entrega eliminada'); delete deliveries[id]; closeDeliveryModal(); renderCalendar(); renderUpcoming(); }
+}
+
+// COTIZACIONES
+let cotizaciones={}, editingCotId=null, cotCounter=1;
+function openCotModal(id) {
+  editingCotId=id||null;
+  const cot=id?cotizaciones[id]:null;
+  document.getElementById('cot-modal-title').textContent=cot?'Editar Cotización':'Nueva Cotización';
+  document.getElementById('cot-id').value=id||'';
+  document.getElementById('cot-client').value=cot?cot.client:'';
+  document.getElementById('cot-date').value=cot?cot.date:new Date().toISOString().split('T')[0];
+  document.getElementById('cot-valid').value=cot?cot.valid:'';
+  document.getElementById('cot-status').value=cot?cot.status:'pendiente';
+  document.getElementById('cot-notes').value=cot?cot.notes:'';
+  document.getElementById('cot-delete-btn').style.display=cot?'inline-block':'none';
+  const tbody=document.getElementById('cot-items-body'); tbody.innerHTML='';
+  const items=cot?cot.items:[{desc:'',qty:1,price:0}];
+  items.forEach(item=>addCotItemRow(item)); calcCotTotal();
+  document.getElementById('cot-modal').classList.add('open'); document.body.style.overflow='hidden';
+}
+function closeCotModal() { document.getElementById('cot-modal').classList.remove('open'); document.body.style.overflow=''; }
+function addCotItem() { addCotItemRow({desc:'',qty:1,price:0}); calcCotTotal(); }
+function addCotItemRow(item) {
+  const tbody=document.getElementById('cot-items-body'), tr=document.createElement('tr');
+  tr.innerHTML=`<td><input type="text" value="${item.desc||''}" placeholder="Descripción" oninput="calcCotTotal()"></td><td><input type="number" value="${item.qty||1}" min="1" style="width:55px" oninput="calcCotTotal()"></td><td><input type="number" value="${item.price||0}" min="0" step="0.01" style="width:85px" oninput="calcCotTotal()"></td><td>$0.00</td><td><button class="btn-remove" onclick="this.closest('tr').remove();calcCotTotal()">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+function calcCotTotal() {
+  let total=0;
+  document.querySelectorAll('#cot-items-body tr').forEach(tr=>{ const inputs=tr.querySelectorAll('input'); const qty=parseFloat(inputs[1]?.value)||0, price=parseFloat(inputs[2]?.value)||0, rt=qty*price; total+=rt; const td=tr.querySelectorAll('td')[3]; if(td) td.textContent='$'+rt.toFixed(2); });
+  document.getElementById('cot-total').textContent='$'+total.toFixed(2);
+}
+function saveCot() {
+  const id=editingCotId||('cot_'+Date.now()), items=[];
+  document.querySelectorAll('#cot-items-body tr').forEach(tr=>{ const inputs=tr.querySelectorAll('input'); items.push({desc:inputs[0]?.value||'',qty:parseFloat(inputs[1]?.value)||1,price:parseFloat(inputs[2]?.value)||0}); });
+  const total=items.reduce((s,i)=>s+i.qty*i.price,0);
+  cotizaciones[id]={id, num:cotizaciones[id]?.num||('COT-'+String(cotCounter++).padStart(3,'0')), client:document.getElementById('cot-client').value.trim(), date:document.getElementById('cot-date').value, valid:document.getElementById('cot-valid').value, status:document.getElementById('cot-status').value, notes:document.getElementById('cot-notes').value.trim(), items, total};
+  logHistory('Administrador','Cotización '+cotizaciones[id].num+(editingCotId?' editada':' creada')+' — '+(cotizaciones[id].client||'sin cliente'));
+  closeCotModal(); renderCotList();
+}
+function deleteCot() {
+  if(!editingCotId) return;
+  if(confirm('¿Eliminar esta cotización?')){ logHistory('Administrador','Cotización '+cotizaciones[editingCotId].num+' eliminada'); delete cotizaciones[editingCotId]; closeCotModal(); renderCotList(); }
+}
+function renderCotList() {
+  const list=document.getElementById('cot-list'), items=Object.values(cotizaciones).sort((a,b)=>b.id.localeCompare(a.id));
+  if(!items.length){list.innerHTML='<div class="empty-hint">Sin cotizaciones. Crea una nueva.</div>';return;}
+  const sc={pendiente:'#1565c0',aprobada:'#2e7d32',rechazada:'#c62828'}, sb={pendiente:'#e3f2fd',aprobada:'#e8f5e9',rechazada:'#ffebee'};
+  list.innerHTML=items.map(c=>`<div class="doc-item" onclick="openCotModal('${c.id}')"><div><div class="doc-item-num">${c.num} — ${c.client||'Sin cliente'}</div><div class="doc-item-detail">Fecha: ${c.date||'—'} · Vigencia: ${c.valid||'—'} · Total: $${(c.total||0).toFixed(2)}</div></div><span class="status-badge" style="background:${sb[c.status]||'#eee'};color:${sc[c.status]||'#333'}">${c.status}</span></div>`).join('');
+}
+
+// ORDENES
+let ordenes={}, editingOrdenId=null, ordenCounter=1;
+function openOrdenModal(id) {
+  editingOrdenId=id||null;
+  const ord=id?ordenes[id]:null;
+  document.getElementById('orden-modal-title').textContent=ord?'Editar Orden':'Nueva Orden de Compra';
+  document.getElementById('orden-id').value=id||'';
+  document.getElementById('orden-supplier').value=ord?ord.supplier:'';
+  document.getElementById('orden-date').value=ord?ord.date:new Date().toISOString().split('T')[0];
+  document.getElementById('orden-delivery').value=ord?ord.delivery:'';
+  document.getElementById('orden-status').value=ord?ord.status:'pendiente';
+  document.getElementById('orden-notes').value=ord?ord.notes:'';
+  document.getElementById('orden-delete-btn').style.display=ord?'inline-block':'none';
+  const tbody=document.getElementById('orden-items-body'); tbody.innerHTML='';
+  const items=ord?ord.items:[{desc:'',qty:1,price:0}];
+  items.forEach(item=>addOrdenItemRow(item)); calcOrdenTotal();
+  document.getElementById('orden-modal').classList.add('open'); document.body.style.overflow='hidden';
+}
+function closeOrdenModal() { document.getElementById('orden-modal').classList.remove('open'); document.body.style.overflow=''; }
+function addOrdenItem() { addOrdenItemRow({desc:'',qty:1,price:0}); calcOrdenTotal(); }
+function addOrdenItemRow(item) {
+  const tbody=document.getElementById('orden-items-body'), tr=document.createElement('tr');
+  tr.innerHTML=`<td><input type="text" value="${item.desc||''}" placeholder="Descripción" oninput="calcOrdenTotal()"></td><td><input type="number" value="${item.qty||1}" min="1" style="width:55px" oninput="calcOrdenTotal()"></td><td><input type="number" value="${item.price||0}" min="0" step="0.01" style="width:85px" oninput="calcOrdenTotal()"></td><td>$0.00</td><td><button class="btn-remove" onclick="this.closest('tr').remove();calcOrdenTotal()">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+function calcOrdenTotal() {
+  let total=0;
+  document.querySelectorAll('#orden-items-body tr').forEach(tr=>{ const inputs=tr.querySelectorAll('input'); const qty=parseFloat(inputs[1]?.value)||0, price=parseFloat(inputs[2]?.value)||0, rt=qty*price; total+=rt; const td=tr.querySelectorAll('td')[3]; if(td) td.textContent='$'+rt.toFixed(2); });
+  document.getElementById('orden-total').textContent='$'+total.toFixed(2);
+}
+function saveOrden() {
+  const id=editingOrdenId||('ord_'+Date.now()), items=[];
+  document.querySelectorAll('#orden-items-body tr').forEach(tr=>{ const inputs=tr.querySelectorAll('input'); items.push({desc:inputs[0]?.value||'',qty:parseFloat(inputs[1]?.value)||1,price:parseFloat(inputs[2]?.value)||0}); });
+  const total=items.reduce((s,i)=>s+i.qty*i.price,0);
+  ordenes[id]={id, num:ordenes[id]?.num||('OC-'+String(ordenCounter++).padStart(3,'0')), supplier:document.getElementById('orden-supplier').value.trim(), date:document.getElementById('orden-date').value, delivery:document.getElementById('orden-delivery').value, status:document.getElementById('orden-status').value, notes:document.getElementById('orden-notes').value.trim(), items, total};
+  logHistory('Administrador','Orden '+ordenes[id].num+(editingOrdenId?' editada':' creada')+' — '+(ordenes[id].supplier||'sin proveedor'));
+  closeOrdenModal(); renderOrdenList();
+}
+function deleteOrden() {
+  if(!editingOrdenId) return;
+  if(confirm('¿Eliminar esta orden?')){ logHistory('Administrador','Orden '+ordenes[editingOrdenId].num+' eliminada'); delete ordenes[editingOrdenId]; closeOrdenModal(); renderOrdenList(); }
+}
+function renderOrdenList() {
+  const list=document.getElementById('orden-list'), items=Object.values(ordenes).sort((a,b)=>b.id.localeCompare(a.id));
+  if(!items.length){list.innerHTML='<div class="empty-hint">Sin órdenes. Crea una nueva.</div>';return;}
+  const sc={pendiente:'#1565c0',enviada:'#e65100',recibida:'#2e7d32',cancelada:'#c62828'}, sb={pendiente:'#e3f2fd',enviada:'#fff3e0',recibida:'#e8f5e9',cancelada:'#ffebee'};
+  list.innerHTML=items.map(o=>`<div class="doc-item" onclick="openOrdenModal('${o.id}')"><div><div class="doc-item-num">${o.num} — ${o.supplier||'Sin proveedor'}</div><div class="doc-item-detail">Fecha: ${o.date||'—'} · Entrega: ${o.delivery||'—'} · Total: $${(o.total||0).toFixed(2)}</div></div><span class="status-badge" style="background:${sb[o.status]||'#eee'};color:${sc[o.status]||'#333'}">${o.status}</span></div>`).join('');
+}
+
+// STORAGE URL
+function storageUrl(path) { return 'https://aukirjjgqtrltltvpnpf.supabase.co/storage/v1/object/public/innavapak-files/'+path; }
+
+// SAVE
+async function saveData() {
+  const statusEl=document.getElementById('save-status');
+  statusEl.textContent='Guardando...'; statusEl.className='save-status';
+  try {
+    const costMeta=[], certMeta=[];
+    for(const f of costFiles) { if(f._file) await sb.storage.from('innavapak-files').upload('costos/'+f.name,f._file,{upsert:true}); costMeta.push({name:f.name,rows:f.rows||[]}); }
+    for(const f of certFiles) { if(f._file) await sb.storage.from('innavapak-files').upload('certificados/'+f.name,f._file,{upsert:true}); certMeta.push({name:f.name,size:f.size||0}); }
+    let remisionMeta=null;
+    if(remisionFile) { if(remisionFile._file) await sb.storage.from('innavapak-files').upload('remisiones/'+remisionFile.name,remisionFile._file,{upsert:true}); remisionMeta={name:remisionFile.name,size:remisionFile.size||0}; }
+    const clientsData=Object.entries(clients).map(([id,c])=>{return{id,name:c.name,files:c.files.map(f=>{return{name:f.name,rows:f.rows||[]}})  }});
+    const payload={clients:clientsData,costFiles:costMeta,certFiles:certMeta,remision:remisionMeta,deliveries,cotizaciones,ordenes,historial,saved_at:new Date().toISOString()};
+    const {error}=await sb.from('innavapak_data').upsert({clave:'main',datos:payload},{onConflict:'clave'});
+    if(error) throw error;
+    logHistory('Administrador','Datos guardados en la nube');
+    statusEl.textContent='Guardado a las '+new Date().toLocaleTimeString('es-MX'); statusEl.className='save-status ok';
+  } catch(e) { statusEl.textContent='Error: '+e.message; statusEl.className='save-status err'; }
+}
+
+// LOAD
+async function loadData() {
+  const statusEl=document.getElementById('save-status');
+  statusEl.textContent='Cargando...'; statusEl.className='save-status';
+  try {
+    const {data,error}=await sb.from('innavapak_data').select('datos').eq('clave','main').single();
+    if(error||!data){ statusEl.textContent='Sin datos guardados aún.'; statusEl.className='save-status'; return; }
+    const saved=data.datos;
+    if(saved.clients) { saved.clients.forEach(c=>{ clients[c.id]={name:c.name,files:(c.files||[]).map(f=>{return{name:f.name,rows:f.rows||[]}})  }; }); renderClientsGrid(); }
+    if(saved.costFiles) { saved.costFiles.forEach(f=>costFiles.push({name:f.name,rows:f.rows||[],url:storageUrl('costos/'+f.name)})); renderCostFiles(); }
+    if(saved.certFiles) { saved.certFiles.forEach(f=>certFiles.push({name:f.name,size:f.size||0,url:storageUrl('certificados/'+f.name)})); renderCertFiles(); }
+    if(saved.remision) { remisionFile={name:saved.remision.name,size:saved.remision.size||0,url:storageUrl('remisiones/'+saved.remision.name)}; renderRemision(); }
+    if(saved.deliveries) { deliveries=saved.deliveries; renderCalendar(); renderUpcoming(); }
+    if(saved.cotizaciones) { cotizaciones=saved.cotizaciones; renderCotList(); }
+    if(saved.ordenes) { ordenes=saved.ordenes; renderOrdenList(); }
+    if(saved.historial) { historial=saved.historial; renderHistory(); }
+    checkAlerts();
+    statusEl.textContent='Datos cargados'; statusEl.className='save-status ok';
+    setTimeout(()=>{ statusEl.textContent='Sin cambios nuevos'; statusEl.className='save-status'; },3000);
+  } catch(e) { statusEl.textContent='Error al cargar: '+e.message; statusEl.className='save-status err'; }
+}
+</script>
+</body>
+</html>
