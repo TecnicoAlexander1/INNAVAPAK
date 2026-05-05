@@ -3,10 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>INNAVAPAKK</title>
+<title>INNAVAPAK</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  GOOGLE DRIVE a Apps Script 
+//  LINK
+// ═══════════════════════════════════════════════════════════════════
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbybnbMTdhAxldI4AB8bONTu6CZN34LlycM94Zsl_DJoCZyOjlQA2AxvhCwHpBIYKX0/exec';
+// ═══════════════════════════════════════════════════════════════════
+</script>
 <style>
 :root {
   --blue-deep:#0d2f55; --blue-mid:#1a4a7a; --blue-light:#2d6fb5;
@@ -212,8 +219,6 @@ footer{background:var(--blue-deep);border-top:1px solid rgba(255,255,255,0.06);p
 </style>
 </head>
 <body>
-<input>
-</div>
 <div id="login-screen">
   <div class="login-card">
     <div class="login-logo">INNAVAPAK</div>
@@ -373,7 +378,8 @@ footer{background:var(--blue-deep);border-top:1px solid rgba(255,255,255,0.06);p
   <span id="user-label" style="font-size:0.78rem;color:rgba(255,255,255,0.4);font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;">INNAVAPAK</span>
   <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
     <span class="save-status" id="save-status">Sin cambios guardados</span>
-    <button class="save-btn" onclick="saveData()">&#128190; Guardar Información</button>
+    <button class="save-btn" onclick="saveData()">&#9729;&#65039; Guardar en Drive</button>
+    <button class="save-btn" style="background:#1565c0;" onclick="saveToLocalDisk()">&#128190; Guardar en Disco</button>
     <button class="logout-btn" onclick="doLogout()">Salir</button>
   </div>
 </div>
@@ -476,7 +482,7 @@ const USUARIOS = [
     correo:   "jaime@innavapak.com",
     password: "admin2000",
     rol:      "admin",
-    ver:      [] // admin ve todo, no importa esta lista
+    ver:      ["entregas"] // admin ve todo,
   },
   {
     correo:   "reyna@innavapak.com",
@@ -495,8 +501,6 @@ const USUARIOS = [
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 
-const { createClient } = supabase;
-const sb = createClient('https://aukirjjgqtrltltvpnpf.supabase.co', 'sb_publishable_ojyK26oMQICdgFy-FiC6-g_ppuwbrqq');
 // --- FUNCIÓN PARA CORREGIR LA HORA (MÉXICO) ---
 function getMexicoTime() {
   return new Date().toLocaleString('es-MX', {
@@ -589,18 +593,35 @@ window.addEventListener('DOMContentLoaded', function() {
   });
   document.getElementById('new-client-name').addEventListener('keydown', e => { if(e.key==='Enter') addClient(); });
 });
-async function logHistory(quien, que) {
-  try { await sb.from('innavapak_historial').insert({ usuario: quien, accion: que }); } catch(e) {}
-  loadHistorial();
+function logHistory(quien, que) {
+  // Guardar en memoria local (se persiste en Drive con el resto de datos)
+  if (!window.historialLocal) window.historialLocal = [];
+  window.historialLocal.unshift({
+    usuario: quien,
+    accion: que,
+    fecha: new Date().toISOString()
+  });
+  // Mantener solo últimos 100 registros
+  if (window.historialLocal.length > 100) window.historialLocal.pop();
+  renderHistorialLocal();
+  // Programar auto-guardado para persistir el historial
+  scheduleAutoSave();
 }
-async function loadHistorial() {
-  try {
-    await sb.from('innavapak_historial').delete().lt('fecha', new Date(Date.now()-7*24*60*60*1000).toISOString());
-    const { data } = await sb.from('innavapak_historial').select('*').order('fecha',{ascending:false}).limit(100);
-    const list = document.getElementById('history-list');
-    if (!data||!data.length) { list.innerHTML='<div class="empty-hint">Sin actividad registrada.</div>'; return; }
-    list.innerHTML = data.map(h => '<div class="history-item"><div class="history-time">'+new Date(new Date(h.fecha).getTime() - (6 * 60 * 60 * 1000)).toLocaleString('es-MX')+'</div><div><div class="history-who">'+h.usuario+'</div><div class="history-what">'+h.accion+'</div></div></div>').join('');
-  } catch(e) {}
+function loadHistorial() {
+  renderHistorialLocal();
+}
+function renderHistorialLocal() {
+  const list = document.getElementById('history-list');
+  if (!list) return;
+  const hist = window.historialLocal || [];
+  // Filtrar solo últimos 7 días
+  const weekAgo = Date.now() - 7*24*60*60*1000;
+  const recent = hist.filter(h => new Date(h.fecha).getTime() > weekAgo);
+  if (!recent.length) { list.innerHTML='<div class="empty-hint">Sin actividad registrada.</div>'; return; }
+  list.innerHTML = recent.map(h => {
+    const fecha = new Date(new Date(h.fecha).getTime() - (6*60*60*1000)).toLocaleString('es-MX');
+    return '<div class="history-item"><div class="history-time">'+fecha+'</div><div><div class="history-who">'+h.usuario+'</div><div class="history-what">'+h.accion+'</div></div></div>';
+  }).join('');
 }
 function parseExcel(file, cb) {
   const r = new FileReader();
@@ -646,7 +667,7 @@ function renderRemision(){
 }
 function addClient(){
   const inp=document.getElementById('new-client-name'),name=inp.value.trim();if(!name){inp.focus();return;}
-  clients['c'+Date.now()]={name,files:[]};inp.value='';renderClientsGrid();
+  clients['c'+Date.now()]={name,files:[]};inp.value='';scheduleAutoSave();renderClientsGrid();
   logHistory(currentUser,'Cliente agregado: '+name);
 }
 function renderClientsGrid(){
@@ -660,11 +681,11 @@ function renderClientsGrid(){
     card.addEventListener('click',()=>openModal(id));grid.appendChild(card);
   });
 }
-function deleteClient(e,id){e.stopPropagation();if(confirm('Eliminar a "'+clients[id].name+'"?')){logHistory(currentUser,'Cliente eliminado: '+clients[id].name);delete clients[id];renderClientsGrid();}}
+function deleteClient(e,id){e.stopPropagation();if(confirm('Eliminar a "'+clients[id].name+'"?')){logHistory(currentUser,'Cliente eliminado: '+clients[id].name);delete clients[id];scheduleAutoSave();renderClientsGrid();}}
 function openModal(id){activeClientId=id;document.getElementById('modal-client-title').textContent=clients[id].name;renderModalFiles();document.getElementById('client-modal').classList.add('open');document.body.style.overflow='hidden';}
 function closeModal(){document.getElementById('client-modal').classList.remove('open');document.body.style.overflow='';activeClientId=null;}
 function loadClientFile(e){if(!activeClientId)return;Array.from(e.target.files).forEach(f=>parseExcel(f,rows=>{clients[activeClientId].files.push({name:f.name,rows});renderModalFiles();renderClientsGrid();}));e.target.value='';}
-function removeClientFile(i){clients[activeClientId].files.splice(i,1);renderModalFiles();renderClientsGrid();}
+function removeClientFile(i){clients[activeClientId].files.splice(i,1);scheduleAutoSave();renderModalFiles();renderClientsGrid();}
 function renderModalFiles(){
   const list=document.getElementById('modal-files-list'),c=clients[activeClientId];
   if(!c||!c.files.length){list.innerHTML='<div class="empty-hint">Sin archivos todavia.</div>';return;}
@@ -719,7 +740,7 @@ function saveDelivery(){
   const id=document.getElementById('del-id').value||('del_'+Date.now()),isNew=!document.getElementById('del-id').value;
   deliveries[id]={id,client:document.getElementById('del-client').value.trim(),desc:document.getElementById('del-desc').value.trim(),date:document.getElementById('del-date').value,status:document.getElementById('del-status').value};
   logHistory(currentUser,'Entrega "'+(deliveries[id].client||'sin cliente')+'" '+(isNew?'creada':'editada'));
-  closeDeliveryModal();renderCalendar();renderUpcoming();
+  scheduleAutoSave();closeDeliveryModal();renderCalendar();renderUpcoming();
 }
 function deleteDelivery(){
   const id=document.getElementById('del-id').value;if(!id)return;
@@ -748,7 +769,7 @@ function saveCot(){
   const total=items.reduce((s,i)=>s+i.qty*i.price,0);
   cotizaciones[id]={id,num:cotizaciones[id]?.num||('COT-'+String(cotCounter++).padStart(3,'0')),client:document.getElementById('cot-client').value.trim(),date:document.getElementById('cot-date').value,valid:document.getElementById('cot-valid').value,status:document.getElementById('cot-status').value,notes:document.getElementById('cot-notes').value.trim(),items,total};
   logHistory(currentUser,'Cotizacion '+cotizaciones[id].num+(editingCotId?' editada':' creada')+' - '+(cotizaciones[id].client||'sin cliente'));
-  closeCotModal();renderCotList();
+  scheduleAutoSave();closeCotModal();renderCotList();
 }
 function deleteCot(){if(!editingCotId)return;if(confirm('Eliminar cotizacion?')){logHistory(currentUser,'Cotizacion '+cotizaciones[editingCotId].num+' eliminada');delete cotizaciones[editingCotId];closeCotModal();renderCotList();}}
 function renderCotList(){
@@ -780,7 +801,7 @@ function saveOrden(){
   const total=items.reduce((s,i)=>s+i.qty*i.price,0);
   ordenes[id]={id,num:ordenes[id]?.num||('OC-'+String(ordenCounter++).padStart(3,'0')),supplier:document.getElementById('orden-supplier').value.trim(),date:document.getElementById('orden-date').value,delivery:document.getElementById('orden-delivery').value,status:document.getElementById('orden-status').value,notes:document.getElementById('orden-notes').value.trim(),items,total};
   logHistory(currentUser,'Orden '+ordenes[id].num+(editingOrdenId?' editada':' creada')+' - '+(ordenes[id].supplier||'sin proveedor'));
-  closeOrdenModal();renderOrdenList();
+  scheduleAutoSave();closeOrdenModal();renderOrdenList();
 }
 function deleteOrden(){if(!editingOrdenId)return;if(confirm('Eliminar orden?')){logHistory(currentUser,'Orden '+ordenes[editingOrdenId].num+' eliminada');delete ordenes[editingOrdenId];closeOrdenModal();renderOrdenList();}}
 function renderOrdenList(){
@@ -789,47 +810,142 @@ function renderOrdenList(){
   const sc={pendiente:'#1565c0',enviada:'#e65100',recibida:'#2e7d32',cancelada:'#c62828'},sbg={pendiente:'#e3f2fd',enviada:'#fff3e0',recibida:'#e8f5e9',cancelada:'#ffebee'};
   list.innerHTML=items.map(o=>'<div class="doc-item" onclick="openOrdenModal(\''+o.id+'\')"><div><div class="doc-item-num">'+o.num+' - '+(o.supplier||'Sin proveedor')+'</div><div class="doc-item-detail">Fecha: '+(o.date||'-')+' · Entrega: '+(o.delivery||'-')+' · Total: $'+(o.total||0).toFixed(2)+'</div></div><span class="status-badge" style="background:'+(sbg[o.status]||'#eee')+';color:'+(sc[o.status]||'#333')+'">'+o.status+'</span></div>').join('');
 }
-function storageUrl(path){return 'https://aukirjjgqtrltltvpnpf.supabase.co/storage/v1/object/public/innavapak-files/' + path;}
-async function saveData(){
-  const statusEl=document.getElementById('save-status');
-  statusEl.textContent='Guardando...';statusEl.className='save-status';
-  try{
-    const costMeta=[],certMeta=[];
-    for(const f of costFiles){if(f._file)await sb.storage.from('innavapak-files').upload('costos/'+f.name,f._file,{upsert:true});costMeta.push({name:f.name,rows:f.rows||[]});}
-    for(const f of certFiles){if(f._file)await sb.storage.from('innavapak-files').upload('certificados/'+f.name,f._file,{upsert:true});certMeta.push({name:f.name,size:f.size||0});}
-    let remisionMeta=null;
-    if(remisionFile){if(remisionFile._file)await sb.storage.from('innavapak-files').upload('remisiones/'+remisionFile.name,remisionFile._file,{upsert:true});remisionMeta={name:remisionFile.name,size:remisionFile.size||0};}
-    const clientsData=Object.entries(clients).map(([id,c])=>({id,name:c.name,files:c.files.map(f=>({name:f.name,rows:f.rows||[]}))}));
-    const payload={clients:clientsData,costFiles:costMeta,certFiles:certMeta,remision:remisionMeta,deliveries,cotizaciones,ordenes,saved_at:new Date().toISOString()};
-    const {error}=await sb.from('innavapak_data').upsert({clave:'main',datos:payload},{onConflict:'clave'});
-    if(error)throw error;
-    logHistory(currentUser,'Guardo informacion en la nube');
-    statusEl.textContent='Guardado a las '+getMexicoTime();statusEl.className='save-status ok';
-  }catch(e){statusEl.textContent='Error: '+e.message;statusEl.className='save-status err';}
-}
-async function loadData(){
-  const statusEl=document.getElementById('save-status');
-  statusEl.textContent='Cargando...';statusEl.className='save-status';
-  try{
-    const {data,error}=await sb.from('innavapak_data').select('datos').eq('clave','main').single();
-    if(error||!data){statusEl.textContent='Sin datos guardados.';statusEl.className='save-status';loadHistorial();return;}
-    const saved=data.datos;
-    if(saved.clients){saved.clients.forEach(c=>{clients[c.id]={name:c.name,files:(c.files||[]).map(f=>({name:f.name,rows:f.rows||[]}))};});renderClientsGrid();}
-    if(saved.costFiles){saved.costFiles.forEach(f=>costFiles.push({name:f.name,rows:f.rows||[],url:storageUrl('costos/'+f.name)}));renderCostFiles();}
-    if(saved.certFiles){saved.certFiles.forEach(f=>certFiles.push({name:f.name,size:f.size||0,url:storageUrl('certificados/'+f.name)}));renderCertFiles();}
-    if(saved.remision){remisionFile={name:saved.remision.name,size:saved.remision.size||0,url:storageUrl('remisiones/'+saved.remision.name)};renderRemision();}
-    if(saved.deliveries){deliveries=saved.deliveries;renderCalendar();renderUpcoming();}
-    if(saved.cotizaciones){cotizaciones=saved.cotizaciones;renderCotList();}
-    if(saved.ordenes){ordenes=saved.ordenes;renderOrdenList();}
-    checkAlerts();loadHistorial();
-    statusEl.textContent='Datos cargados';statusEl.className='save-status ok';
-    setTimeout(()=>{statusEl.textContent='Sin cambios nuevos';statusEl.className='save-status';},3000);
-  }catch(e){statusEl.textContent='Error: '+e.message;statusEl.className='save-status err';}
+// ═══════════════════════════════════════════════════════════════════
+//  GOOGLE DRIVE — Guardar y cargar via Apps Script
+// ═══════════════════════════════════════════════════════════════════
+let autoSaveTimer = null;
+
+function buildPayload() {
+  const costMeta = costFiles.map(f => ({name: f.name, rows: f.rows || []}));
+  const certMeta = certFiles.map(f => ({name: f.name, size: f.size || 0}));
+  const remisionMeta = remisionFile ? {name: remisionFile.name, size: remisionFile.size || 0} : null;
+  const clientsData = Object.entries(clients).map(([id, c]) => ({
+    id, name: c.name,
+    files: c.files.map(f => ({name: f.name, rows: f.rows || []}))
+  }));
+  // Incluir historial en el payload
+  const historialData = (window.historialLocal || []).slice(0, 100);
+  return {
+    clients: clientsData, costFiles: costMeta, certFiles: certMeta,
+    remision: remisionMeta, deliveries, cotizaciones, ordenes,
+    historial: historialData,
+    saved_at: new Date().toISOString()
+  };
 }
 
-</script>
-function getMexicoTime(){
-  return new Date().toLocaleString("es-MX",{timeZone:"America/Mexico_City"});
+async function saveData() {
+  const statusEl = document.getElementById('save-status');
+  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'PEGA_TU_URL_AQUI') {
+    statusEl.textContent = '⚠ Falta la URL del Apps Script';
+    statusEl.className = 'save-status err';
+    return;
+  }
+  statusEl.textContent = 'Guardando en Drive...'; statusEl.className = 'save-status';
+  try {
+    const payload = buildPayload();
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: {'Content-Type': 'text/plain'}
+    });
+    const result = await resp.json();
+    if (!result.ok) throw new Error(result.error || 'Error desconocido');
+    statusEl.textContent = '✓ Guardado en Drive ' + getMexicoTime();
+    statusEl.className = 'save-status ok';
+    setTimeout(() => { statusEl.textContent = 'Auto-guardado activo'; statusEl.className = 'save-status'; }, 3000);
+  } catch(e) {
+    statusEl.textContent = 'Error: ' + e.message; statusEl.className = 'save-status err';
+  }
 }
+
+// Auto-guardado: 2 segundos después del último cambio
+function scheduleAutoSave() {
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(() => saveData(), 2000);
+}
+
+async function loadData() {
+  const statusEl = document.getElementById('save-status');
+  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'PEGA_TU_URL_AQUI') {
+    statusEl.textContent = '⚠ Configura la URL del Apps Script';
+    statusEl.className = 'save-status err';
+    return;
+  }
+  statusEl.textContent = 'Cargando desde Drive...'; statusEl.className = 'save-status';
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL);
+    const text = await resp.text();
+    if (!text || text.trim() === '{}' || text.trim() === '') {
+      statusEl.textContent = 'Drive conectado — sin datos aún';
+      statusEl.className = 'save-status ok';
+      return;
+    }
+    const saved = JSON.parse(text);
+    // Restaurar historial
+    if (saved.historial) {
+      window.historialLocal = saved.historial;
+      renderHistorialLocal();
+    }
+    if (saved.clients) { saved.clients.forEach(c => { clients[c.id] = {name: c.name, files: (c.files||[]).map(f => ({name: f.name, rows: f.rows||[]}))}; }); renderClientsGrid(); }
+    if (saved.costFiles) { saved.costFiles.forEach(f => costFiles.push({name: f.name, rows: f.rows||[]})); renderCostFiles(); }
+    if (saved.certFiles) { saved.certFiles.forEach(f => certFiles.push({name: f.name, size: f.size||0})); renderCertFiles(); }
+    if (saved.remision) { remisionFile = {name: saved.remision.name, size: saved.remision.size||0}; renderRemision(); }
+    if (saved.deliveries) { deliveries = saved.deliveries; renderCalendar(); renderUpcoming(); }
+    if (saved.cotizaciones) { cotizaciones = saved.cotizaciones; renderCotList(); }
+    if (saved.ordenes) { ordenes = saved.ordenes; renderOrdenList(); }
+    checkAlerts();
+    statusEl.textContent = '✓ Cargado desde Drive ' + getMexicoTime();
+    statusEl.className = 'save-status ok';
+    setTimeout(() => { statusEl.textContent = 'Auto-guardado activo'; statusEl.className = 'save-status'; }, 3000);
+  } catch(e) {
+    statusEl.textContent = 'Error cargando: ' + e.message; statusEl.className = 'save-status err';
+  }
+}
+
+async function saveToLocalDisk() {
+  const statusEl = document.getElementById('save-status');
+  try {
+    // Build the same payload as saveData but save to local file
+    const costMeta = [], certMeta = [];
+    for (const f of costFiles) { costMeta.push({name: f.name, rows: f.rows || []}); }
+    for (const f of certFiles) { certMeta.push({name: f.name, size: f.size || 0}); }
+    let remisionMeta = null;
+    if (remisionFile) { remisionMeta = {name: remisionFile.name, size: remisionFile.size || 0}; }
+    const clientsData = Object.entries(clients).map(([id, c]) => ({id, name: c.name, files: c.files.map(f => ({name: f.name, rows: f.rows || []}))}));
+    const payload = {clients: clientsData, costFiles: costMeta, certFiles: certMeta, remision: remisionMeta, deliveries, cotizaciones, ordenes, saved_at: new Date().toISOString()};
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], {type: 'application/json'});
+    // Use File System Access API to save to chosen location
+    if (window.showSaveFilePicker) {
+      const fileHandle = await window.showSaveFilePicker({
+        suggestedName: 'innavapak_backup_' + new Date().toISOString().split('T')[0] + '.json',
+        types: [{ description: 'JSON', accept: {'application/json': ['.json']} }]
+      });
+      const writable = await fileHandle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      logHistory(currentUser, 'Guardó copia en disco local');
+      statusEl.textContent = 'Copia guardada en disco: ' + getMexicoTime();
+      statusEl.className = 'save-status ok';
+    } else {
+      // Fallback: download the file automatically
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'innavapak_backup_' + new Date().toISOString().split('T')[0] + '.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      logHistory(currentUser, 'Descargó copia en disco local');
+      statusEl.textContent = 'Archivo descargado: ' + getMexicoTime();
+      statusEl.className = 'save-status ok';
+    }
+  } catch(e) {
+    if (e.name !== 'AbortError') {
+      statusEl.textContent = 'Error al guardar en disco: ' + e.message;
+      statusEl.className = 'save-status err';
+    }
+  }
+}
+</script>
 </body>
 </html>
