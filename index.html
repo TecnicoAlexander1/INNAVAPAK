@@ -379,7 +379,6 @@ footer{background:var(--blue-deep);border-top:1px solid rgba(255,255,255,0.06);p
   <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
     <span class="save-status" id="save-status">Sin cambios guardados</span>
     <button class="save-btn" onclick="saveData()">&#9729;&#65039; Guardar en Drive</button>
-    <button class="save-btn" style="background:#1565c0;" onclick="saveToLocalDisk()">&#128190; Guardar en Disco</button>
     <button class="logout-btn" onclick="doLogout()">Salir</button>
   </div>
 </div>
@@ -843,11 +842,9 @@ async function saveData() {
   statusEl.textContent = 'Guardando en Drive...'; statusEl.className = 'save-status';
   try {
     const payload = buildPayload();
-    const resp = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-      headers: {'Content-Type': 'text/plain'}
-    });
+    const encoded = encodeURIComponent(JSON.stringify(payload));
+    const url = APPS_SCRIPT_URL + '?action=save&data=' + encoded;
+    const resp = await fetch(url);
     const result = await resp.json();
     if (!result.ok) throw new Error(result.error || 'Error desconocido');
     statusEl.textContent = '✓ Guardado en Drive ' + getMexicoTime();
@@ -902,50 +899,6 @@ async function loadData() {
   }
 }
 
-async function saveToLocalDisk() {
-  const statusEl = document.getElementById('save-status');
-  try {
-    // Build the same payload as saveData but save to local file
-    const costMeta = [], certMeta = [];
-    for (const f of costFiles) { costMeta.push({name: f.name, rows: f.rows || []}); }
-    for (const f of certFiles) { certMeta.push({name: f.name, size: f.size || 0}); }
-    let remisionMeta = null;
-    if (remisionFile) { remisionMeta = {name: remisionFile.name, size: remisionFile.size || 0}; }
-    const clientsData = Object.entries(clients).map(([id, c]) => ({id, name: c.name, files: c.files.map(f => ({name: f.name, rows: f.rows || []}))}));
-    const payload = {clients: clientsData, costFiles: costMeta, certFiles: certMeta, remision: remisionMeta, deliveries, cotizaciones, ordenes, saved_at: new Date().toISOString()};
-    const json = JSON.stringify(payload, null, 2);
-    const blob = new Blob([json], {type: 'application/json'});
-    // Use File System Access API to save to chosen location
-    if (window.showSaveFilePicker) {
-      const fileHandle = await window.showSaveFilePicker({
-        suggestedName: 'innavapak_backup_' + new Date().toISOString().split('T')[0] + '.json',
-        types: [{ description: 'JSON', accept: {'application/json': ['.json']} }]
-      });
-      const writable = await fileHandle.createWritable();
-      await writable.write(blob);
-      await writable.close();
-      logHistory(currentUser, 'Guardó copia en disco local');
-      statusEl.textContent = 'Copia guardada en disco: ' + getMexicoTime();
-      statusEl.className = 'save-status ok';
-    } else {
-      // Fallback: download the file automatically
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'innavapak_backup_' + new Date().toISOString().split('T')[0] + '.json';
-      a.click();
-      URL.revokeObjectURL(url);
-      logHistory(currentUser, 'Descargó copia en disco local');
-      statusEl.textContent = 'Archivo descargado: ' + getMexicoTime();
-      statusEl.className = 'save-status ok';
-    }
-  } catch(e) {
-    if (e.name !== 'AbortError') {
-      statusEl.textContent = 'Error al guardar en disco: ' + e.message;
-      statusEl.className = 'save-status err';
-    }
-  }
-}
 </script>
 </body>
 </html>
