@@ -11,7 +11,7 @@
 //  GOOGLE DRIVE a Apps Script 
 //  LINK
 // ═══════════════════════════════════════════════════════════════════
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwt3U-qeE3izJFc4umPF6g_i6RUR7cxxn9SSp_EwSxADBxrtXNH6gLuRFOI4nIZmn22/exec";
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzbaVDbZgqZn7VkuvuAWPTHUjAAFmp31N9dUV4_hRNgMUJSaZkNbzQRcTdgHcPH6Y99/exec';
 // ═══════════════════════════════════════════════════════════════════
 </script>
 <style>
@@ -217,7 +217,7 @@ footer{background:var(--blue-deep);border-top:1px solid rgba(255,255,255,0.06);p
   .form-grid{grid-template-columns:1fr;}
 }
 
-/* ═══ ESTILO LOYVERSE ═══════════════════════════════════════════════ */
+/* ═══ LOYVERSE STYLES ═══════════════════════════════════════════════ */
 .loy-modal-box{max-width:800px;width:96vw;background:#f0f4fa;color:#1a2744;}
 .loy-tabs{display:flex;gap:0.25rem;padding:0.75rem 1.25rem 0;border-bottom:2px solid #d0d8ea;flex-wrap:wrap;background:#e8eef8;}
 .loy-tab{background:transparent;border:none;color:#6b7a99;font-family:'Barlow Condensed',sans-serif;font-size:0.82rem;letter-spacing:1.5px;text-transform:uppercase;padding:0.5rem 1rem;cursor:pointer;border-radius:6px 6px 0 0;transition:all 0.15s;font-weight:600;}
@@ -438,8 +438,24 @@ footer{background:var(--blue-deep);border-top:1px solid rgba(255,255,255,0.06);p
     <div class="del-modal-header"><div class="del-modal-title" id="del-modal-title">Nueva Entrega</div><button class="modal-close" onclick="closeDeliveryModal()">✕</button></div>
     <div class="del-modal-body">
       <input type="hidden" id="del-id">
-      <div class="del-field"><label>Cliente</label><input type="text" id="del-client" placeholder="Nombre del cliente..."></div>
-      <div class="del-field"><label>Descripción / Producto</label><textarea id="del-desc" style="resize:vertical;min-height:60px;" placeholder="Describe la entrega..."></textarea></div>
+      <input type="hidden" id="del-inv-client-id">
+      <input type="hidden" id="del-inv-prod-id">
+      <input type="hidden" id="del-inv-qty-prev">
+      <div class="del-field"><label>Cliente</label>
+        <select id="del-client-sel" onchange="onDeliveryClientChange(this.value)" style="width:100%;">
+          <option value="">— Seleccionar cliente —</option>
+        </select>
+      </div>
+      <div class="del-field" id="del-prod-field" style="display:none;"><label>Producto del inventario <span style="font-size:0.72rem;color:#6b7a99;">(opcional)</span></label>
+        <select id="del-prod-sel" onchange="onDeliveryProdChange(this.value)" style="width:100%;">
+          <option value="">— Sin producto específico —</option>
+        </select>
+      </div>
+      <div class="del-field" id="del-qty-field" style="display:none;"><label>Cantidad a entregar</label>
+        <input type="number" id="del-qty" min="1" value="1" style="width:100%;">
+        <span id="del-stock-hint" style="font-size:0.75rem;color:#6b7a99;"></span>
+      </div>
+      <div class="del-field"><label>Descripción / Notas</label><textarea id="del-desc" style="resize:vertical;min-height:60px;" placeholder="Describe la entrega..."></textarea></div>
       <div class="del-field"><label>Fecha y Hora</label><input type="datetime-local" id="del-date"></div>
       <div class="del-field"><label>Estado</label><select id="del-status"><option value="pendiente">Pendiente</option><option value="entregado">Entregado</option><option value="cancelado">Cancelado</option></select></div>
       <div class="del-btn-row" style="margin-top:1rem;">
@@ -525,7 +541,7 @@ footer{background:var(--blue-deep);border-top:1px solid rgba(255,255,255,0.06);p
         <div class="loy-field"><label>Contacto</label><input type="text" id="loy-p-contact" placeholder="Nombre del contacto"></div>
         <div class="loy-field"><label>Teléfono</label><input type="text" id="loy-p-phone" placeholder="+52 ..."></div>
         <div class="loy-field"><label>Correo</label><input type="email" id="loy-p-email" placeholder="correo@empresa.com"></div>
-        <div class="loy-field"><label>Ciudad / Estado</label><input type="text" id="loy-p-city" placeholder="Ojo de Agua, Tecamac"></div>
+        <div class="loy-field"><label>Ciudad / Estado</label><input type="text" id="loy-p-city" placeholder="Monterrey, NL"></div>
         <div class="loy-field" style="grid-column:1/-1;"><label>Dirección</label><input type="text" id="loy-p-address" placeholder="Calle, colonia, CP"></div>
         <div class="loy-field" style="grid-column:1/-1;"><label>Notas internas</label><textarea id="loy-p-notes" placeholder="Condiciones de pago, observaciones..."></textarea></div>
       </div>
@@ -1510,21 +1526,117 @@ function renderUpcoming(){
 function openDeliveryModal(id){
   const del=id?deliveries[id]:null;
   document.getElementById('del-modal-title').textContent=del?'Editar Entrega':'Nueva Entrega';
-  document.getElementById('del-id').value=id||'';document.getElementById('del-client').value=del?.client||'';document.getElementById('del-desc').value=del?.desc||'';document.getElementById('del-date').value=del?.date||'';document.getElementById('del-status').value=del?.status||'pendiente';
+  document.getElementById('del-id').value=id||'';
+  document.getElementById('del-desc').value=del?.desc||'';
+  document.getElementById('del-date').value=del?.date||'';
+  document.getElementById('del-status').value=del?.status||'pendiente';
   document.getElementById('del-delete-btn').style.display=del?'inline-block':'none';
+  // Llenar select de clientes
+  const sel=document.getElementById('del-client-sel');
+  sel.innerHTML='<option value="">— Seleccionar cliente —</option>';
+  Object.entries(clients).forEach(([cid,c])=>{
+    const opt=document.createElement('option');
+    opt.value=cid; opt.textContent=c.name;
+    if(del?.invClientId===cid) opt.selected=true;
+    sel.appendChild(opt);
+  });
+  // Restaurar campos si es edición
+  document.getElementById('del-inv-client-id').value=del?.invClientId||'';
+  document.getElementById('del-inv-prod-id').value=del?.invProdId||'';
+  document.getElementById('del-inv-qty-prev').value=del?.invQty||0;
+  document.getElementById('del-qty').value=del?.invQty||1;
+  document.getElementById('del-prod-field').style.display='none';
+  document.getElementById('del-qty-field').style.display='none';
+  if(del?.invClientId) onDeliveryClientChange(del.invClientId, del.invProdId);
   document.getElementById('delivery-modal').classList.add('open');document.body.style.overflow='hidden';
 }
 function openDeliveryModalForDate(d){openDeliveryModal(null);document.getElementById('del-date').value=d+'T09:00';}
+function onDeliveryClientChange(clientId, preselProdId) {
+  document.getElementById('del-inv-client-id').value = clientId;
+  document.getElementById('del-inv-prod-id').value = '';
+  const prodField = document.getElementById('del-prod-field');
+  const qtyField = document.getElementById('del-qty-field');
+  const prodSel = document.getElementById('del-prod-sel');
+  if (!clientId || !clients[clientId]) {
+    prodField.style.display = 'none'; qtyField.style.display = 'none'; return;
+  }
+  const inv = clients[clientId].inventario || [];
+  prodSel.innerHTML = '<option value="">— Sin producto específico —</option>';
+  inv.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name + ' (Stock: ' + p.stock + ' ' + (p.unit||'') + ')';
+    if (preselProdId === p.id) opt.selected = true;
+    prodSel.appendChild(opt);
+  });
+  prodField.style.display = '';
+  if (preselProdId) onDeliveryProdChange(preselProdId);
+}
+
+function onDeliveryProdChange(prodId) {
+  document.getElementById('del-inv-prod-id').value = prodId;
+  const qtyField = document.getElementById('del-qty-field');
+  const hint = document.getElementById('del-stock-hint');
+  const clientId = document.getElementById('del-inv-client-id').value;
+  if (!prodId || !clientId) { qtyField.style.display = 'none'; return; }
+  const prod = clients[clientId]?.inventario?.find(p => p.id === prodId);
+  if (prod) {
+    qtyField.style.display = '';
+    hint.textContent = 'Stock disponible: ' + prod.stock + ' ' + (prod.unit||'');
+    hint.style.color = prod.stock > 0 ? '#2f855a' : '#e53e3e';
+  }
+}
+
 function closeDeliveryModal(){document.getElementById('delivery-modal').classList.remove('open');document.body.style.overflow='';}
 function saveDelivery(){
   const id=document.getElementById('del-id').value||('del_'+Date.now()),isNew=!document.getElementById('del-id').value;
-  deliveries[id]={id,client:document.getElementById('del-client').value.trim(),desc:document.getElementById('del-desc').value.trim(),date:document.getElementById('del-date').value,status:document.getElementById('del-status').value};
+  const selClient=document.getElementById('del-client-sel');
+  const clientId=document.getElementById('del-inv-client-id').value;
+  const prodId=document.getElementById('del-inv-prod-id').value;
+  const qty=parseFloat(document.getElementById('del-qty').value)||0;
+  const prevQty=parseFloat(document.getElementById('del-inv-qty-prev').value)||0;
+  const clientName=selClient.options[selClient.selectedIndex]?.text||'';
+  // Restore previous stock if editing
+  if(!isNew && clientId && prodId && prevQty>0){
+    const prev=clients[clientId]?.inventario?.find(p=>p.id===prodId);
+    if(prev) prev.stock=(prev.stock||0)+prevQty;
+  }
+  // Discount new stock
+  let prodName='';
+  if(clientId && prodId && qty>0){
+    const prod=clients[clientId]?.inventario?.find(p=>p.id===prodId);
+    if(prod){ prod.stock=Math.max(0,(prod.stock||0)-qty); prodName=prod.name; }
+  }
+  // Si estado es cancelado, no descontar stock (ya fue restaurado arriba)
+  const status=document.getElementById('del-status').value;
+  if(status==='cancelado' && clientId && prodId && qty>0){
+    const prodRestore=clients[clientId]?.inventario?.find(p=>p.id===prodId);
+    if(prodRestore){ prodRestore.stock=Math.max(0,(prodRestore.stock||0)+qty-(qty)); }
+  }
+  deliveries[id]={id,
+    client:clientName,
+    invClientId:clientId||'',
+    invProdId:prodId||'',
+    invQty:status==='cancelado'?0:qty,
+    desc:(prodName?prodName+' x'+qty+(document.getElementById('del-desc').value.trim()?'\n':''): '')+document.getElementById('del-desc').value.trim(),
+    date:document.getElementById('del-date').value,
+    status:document.getElementById('del-status').value};
   logHistory(currentUser,'Entrega "'+(deliveries[id].client||'sin cliente')+'" '+(isNew?'creada':'editada'));
   scheduleAutoSave();closeDeliveryModal();renderCalendar();renderUpcoming();
 }
 function deleteDelivery(){
   const id=document.getElementById('del-id').value;if(!id)return;
-  if(confirm('Eliminar esta entrega?')){logHistory(currentUser,'Entrega eliminada');delete deliveries[id];closeDeliveryModal();renderCalendar();renderUpcoming();}
+  if(confirm('¿Eliminar esta entrega?')){
+    const del=deliveries[id];
+    // Regresar stock si tenía producto vinculado
+    if(del && del.invClientId && del.invProdId && del.invQty>0){
+      const prod=clients[del.invClientId]?.inventario?.find(p=>p.id===del.invProdId);
+      if(prod){ prod.stock=(prod.stock||0)+del.invQty; scheduleAutoSave(); }
+    }
+    logHistory(currentUser,'Entrega eliminada');
+    delete deliveries[id];
+    closeDeliveryModal();renderCalendar();renderUpcoming();
+  }
 }
 function openCotModal(id){
   editingCotId=id||null;const cot=id?cotizaciones[id]:null;
