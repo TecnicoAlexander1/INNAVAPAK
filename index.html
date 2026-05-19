@@ -1620,11 +1620,35 @@ function saveDelivery(){
     const prev=clients[clientId]?.inventario?.find(p=>p.id===prodId);
     if(prev) prev.stock=(prev.stock||0)+prevQty;
   }
-  // Solo descontar stock si el estado es "entregado"
+  // Solo descontar stock y registrar venta si el estado es "entregado"
   let prodName='';
+  const prevStatus = isNew ? '' : (deliveries[id]?.status||'');
   if(status==='entregado' && clientId && prodId && qty>0){
     const prod=clients[clientId]?.inventario?.find(p=>p.id===prodId);
-    if(prod){ prod.stock=Math.max(0,(prod.stock||0)-qty); prodName=prod.name; }
+    if(prod){
+      prod.stock=Math.max(0,(prod.stock||0)-qty);
+      prodName=prod.name;
+      // Registrar venta automática en el código de cliente (solo si no existía antes)
+      if(isNew || prevStatus!=='entregado'){
+        if(!clients[clientId].ventas) clients[clientId].ventas=[];
+        clients[clientId].ventas.push({
+          id:'venta_del_'+id,
+          date:document.getElementById('del-date').value.split('T')[0],
+          items:[{prodId:prod.id,name:prod.name,qty:qty,price:prod.price||0}],
+          total:qty*(prod.price||0),
+          notes:'Venta automática desde entrega del calendario'
+        });
+        renderClientsGrid();
+      }
+    }
+  } else if(status==='cancelado' && clientId && prodId){
+    // Si se cancela, eliminar la venta automática si existía
+    if(clients[clientId]?.ventas){
+      clients[clientId].ventas = clients[clientId].ventas.filter(v=>v.id!=='venta_del_'+id);
+      renderClientsGrid();
+    }
+    const prod=clients[clientId]?.inventario?.find(p=>p.id===prodId);
+    if(prod) prodName=prod.name;
   } else if(clientId && prodId){
     const prod=clients[clientId]?.inventario?.find(p=>p.id===prodId);
     if(prod) prodName=prod.name;
@@ -1647,8 +1671,14 @@ function deleteDelivery(){
     // Regresar stock si tenía producto vinculado
     if(del && del.invClientId && del.invProdId && del.invQty>0){
       const prod=clients[del.invClientId]?.inventario?.find(p=>p.id===del.invProdId);
-      if(prod){ prod.stock=(prod.stock||0)+del.invQty; scheduleAutoSave(); }
+      if(prod) prod.stock=(prod.stock||0)+del.invQty;
     }
+    // Eliminar venta automática si existía
+    if(del && del.invClientId && clients[del.invClientId]?.ventas){
+      clients[del.invClientId].ventas = clients[del.invClientId].ventas.filter(v=>v.id!=='venta_del_'+id);
+      renderClientsGrid();
+    }
+    scheduleAutoSave();
     logHistory(currentUser,'Entrega eliminada');
     delete deliveries[id];
     closeDeliveryModal();renderCalendar();renderUpcoming();
