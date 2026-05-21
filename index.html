@@ -1367,10 +1367,21 @@ async function loadData() {
   }
   statusEl.textContent = 'Cargando desde Drive...'; statusEl.className = 'save-status';
   try {
-    const resp = await fetch(APPS_SCRIPT_URL + '?token=INNAVAPAK2024');
-    const text = await resp.text();
+    const resp = await fetch(APPS_SCRIPT_URL + '?token=INNAVAPAK2024', {
+      redirect: 'follow',
+      cache: 'no-cache'
+    });
+    let text = await resp.text();
+    // El Apps Script a veces devuelve HTML de redirección — buscar el JSON dentro
+    if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+      // Intentar extraer JSON del body
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) { text = jsonMatch[0]; }
+      else {
+        throw new Error('Respuesta HTML inesperada — verifica la implementación del Apps Script');
+      }
+    }
     if (!text || text.trim() === '{}' || text.trim() === '') {
-      // Primera vez — Drive está vacío, es seguro guardar
       window.driveLoadedOk = true;
       window.driveHadData = false;
       statusEl.textContent = 'Drive conectado — sin datos aún';
@@ -1561,8 +1572,8 @@ function openDeliveryModal(id){
   // Restaurar campos si es edición
   document.getElementById('del-inv-client-id').value=del?.invClientId||'';
   document.getElementById('del-inv-prod-id').value=del?.invProdId||'';
-  document.getElementById('del-inv-qty-prev').value=del?.invQty||0;
-  document.getElementById('del-qty').value=del?.invQty||1;
+  document.getElementById('del-inv-qty-prev').value=del?.invQty||0; // stock previously discounted
+  document.getElementById('del-qty').value=del?.qty||del?.invQty||1;
   document.getElementById('del-prod-field').style.display='none';
   document.getElementById('del-qty-field').style.display='none';
   if(del?.invClientId) onDeliveryClientChange(del.invClientId, del.invProdId);
@@ -1628,18 +1639,18 @@ function saveDelivery(){
     if(prod){
       prod.stock=Math.max(0,(prod.stock||0)-qty);
       prodName=prod.name;
-      // Registrar venta automática en el código de cliente (solo si no existía antes)
-      if(isNew || prevStatus!=='entregado'){
-        if(!clients[clientId].ventas) clients[clientId].ventas=[];
-        clients[clientId].ventas.push({
-          id:'venta_del_'+id,
-          date:document.getElementById('del-date').value.split('T')[0],
-          items:[{prodId:prod.id,name:prod.name,qty:qty,price:prod.price||0}],
-          total:qty*(prod.price||0),
-          notes:'Venta automática desde entrega del calendario'
-        });
-        renderClientsGrid();
-      }
+      // Eliminar venta anterior de esta entrega si existía (para no duplicar)
+      if(!clients[clientId].ventas) clients[clientId].ventas=[];
+      clients[clientId].ventas = clients[clientId].ventas.filter(v=>v.id!=='venta_del_'+id);
+      // Registrar venta automática con la cantidad correcta
+      clients[clientId].ventas.push({
+        id:'venta_del_'+id,
+        date:document.getElementById('del-date').value.split('T')[0],
+        items:[{prodId:prod.id,name:prod.name,qty:qty,price:prod.price||0}],
+        total:qty*(prod.price||0),
+        notes:'Venta automática desde entrega del calendario'
+      });
+      renderClientsGrid();
     }
   } else if(status==='cancelado' && clientId && prodId){
     // Si se cancela, eliminar la venta automática si existía
@@ -1657,6 +1668,7 @@ function saveDelivery(){
     client:clientName,
     invClientId:clientId||'',
     invProdId:prodId||'',
+    qty:qty,
     invQty:status==='entregado'?qty:0,
     desc:(prodName?prodName+' x'+qty+(document.getElementById('del-desc').value.trim()?'\n':''): '')+document.getElementById('del-desc').value.trim(),
     date:document.getElementById('del-date').value,
