@@ -749,7 +749,21 @@ window.addEventListener('DOMContentLoaded', function() {
   if (sessionStorage.getItem('innavapak_auth') === '1') {
     currentUser = sessionStorage.getItem('innavapak_user') || 'Usuario';
     showApp();
-    loadData().then(() => aplicarPermisos());
+    loadData().then(() => {
+      aplicarPermisos();
+      // Re-renderizar todo después de que el DOM esté completamente pintado
+      setTimeout(() => {
+        renderClientsGrid();
+        renderCertFiles();
+        renderRemision();
+        renderCalendar();
+        renderUpcoming();
+        renderCotList();
+        renderOrdenList();
+        renderHistorialLocal();
+        checkAlerts();
+      }, 500);
+    });
   }
   renderCalendar(); renderUpcoming();
   ['delivery-modal','cot-modal','orden-modal','client-modal'].forEach(id => {
@@ -1407,7 +1421,7 @@ async function loadData() {
       renderOrdenList();
       renderHistorialLocal();
       checkAlerts();
-    }, 300);
+    }, 100);
     // Marcar que Drive cargó correctamente y que había datos
     window.driveLoadedOk = true;
     const hayDatos = Object.keys(clients).length > 0
