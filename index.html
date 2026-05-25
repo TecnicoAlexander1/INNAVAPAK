@@ -1389,18 +1389,25 @@ async function loadData() {
       return;
     }
     const saved = JSON.parse(text);
-    // Restaurar historial
-    if (saved.historial) {
-      window.historialLocal = saved.historial;
+    if (saved.clients) { saved.clients.forEach(c => { clients[c.id] = {name: c.name, files: (c.files||[]).map(f => ({name: f.name, rows: f.rows||[], size: f.size||0})), perfil: c.perfil||{}, inventario: c.inventario||[], ventas: c.ventas||[]}; }); }
+    if (saved.certFiles) { saved.certFiles.forEach(f => certFiles.push({name: f.name, size: f.size||0})); }
+    if (saved.remision) { remisionFile = {name: saved.remision.name, size: saved.remision.size||0}; }
+    if (saved.deliveries) { deliveries = saved.deliveries; }
+    if (saved.cotizaciones) { cotizaciones = saved.cotizaciones; }
+    if (saved.ordenes) { ordenes = saved.ordenes; }
+    if (saved.historial) { window.historialLocal = saved.historial; }
+    // Forzar re-render completo después de cargar — con delay para que el DOM esté listo
+    setTimeout(() => {
+      renderClientsGrid();
+      renderCertFiles();
+      renderRemision();
+      renderCalendar();
+      renderUpcoming();
+      renderCotList();
+      renderOrdenList();
       renderHistorialLocal();
-    }
-    if (saved.clients) { saved.clients.forEach(c => { clients[c.id] = {name: c.name, files: (c.files||[]).map(f => ({name: f.name, rows: f.rows||[], size: f.size||0})), perfil: c.perfil||{}, inventario: c.inventario||[], ventas: c.ventas||[]}; }); renderClientsGrid(); }
-    if (saved.certFiles) { saved.certFiles.forEach(f => certFiles.push({name: f.name, size: f.size||0})); renderCertFiles(); }
-    if (saved.remision) { remisionFile = {name: saved.remision.name, size: saved.remision.size||0}; renderRemision(); }
-    if (saved.deliveries) { deliveries = saved.deliveries; renderCalendar(); renderUpcoming(); }
-    if (saved.cotizaciones) { cotizaciones = saved.cotizaciones; renderCotList(); }
-    if (saved.ordenes) { ordenes = saved.ordenes; renderOrdenList(); }
-    checkAlerts();
+      checkAlerts();
+    }, 300);
     // Marcar que Drive cargó correctamente y que había datos
     window.driveLoadedOk = true;
     const hayDatos = Object.keys(clients).length > 0
