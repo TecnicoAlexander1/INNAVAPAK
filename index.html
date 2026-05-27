@@ -842,10 +842,11 @@ function renderRemision(){
 // }
 
 function ensureClientData(id) {
-  if (!clients[id].perfil)     clients[id].perfil    = {};
-  if (!clients[id].inventario) clients[id].inventario = [];
-  if (!clients[id].ventas)     clients[id].ventas     = [];
-  if (!clients[id].files)      clients[id].files      = [];
+  if (!clients[id]) return;
+  if (clients[id].perfil === undefined)     clients[id].perfil    = {};
+  if (clients[id].inventario === undefined) clients[id].inventario = [];
+  if (clients[id].ventas === undefined)     clients[id].ventas     = [];
+  if (clients[id].files === undefined)      clients[id].files      = [];
 }
 
 function addClient() {
@@ -901,9 +902,18 @@ function deleteClient(e, id) {
 
 // ── MODAL CLIENTE ──────────────────────────────────────────────────
 function openModal(id) {
+  // Si Drive aún no terminó de cargar, esperar antes de abrir
+  if (!window.driveLoadedOk) {
+    const statusEl = document.getElementById('save-status');
+    statusEl.textContent = 'Cargando datos...';
+    statusEl.className = 'save-status';
+    setTimeout(() => openModal(id), 400);
+    return;
+  }
   activeClientId = id;
   ensureClientData(id);
   const c = clients[id];
+  console.log('openModal:', id, 'inventario:', (c.inventario||[]).length, 'ventas:', (c.ventas||[]).length, 'perfil:', JSON.stringify(c.perfil||{}));
   document.getElementById('modal-client-title').textContent = c.name;
   document.getElementById('modal-client-subtitle').textContent = c.perfil.rfc || 'Panel de gestión';
   // Reset to perfil tab
@@ -1483,60 +1493,6 @@ async function saveToLocalDisk() {
   }
 }
 
-function parseExcel(file, cb) {
-  const r = new FileReader();
-  r.onload = e => { const wb = XLSX.read(new Uint8Array(e.target.result),{type:'array'}); cb(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''})); };
-  r.readAsArrayBuffer(file);
-}
-function renderTable(rows) {
-  if (!rows||!rows.length) return '<p style="color:#aaa;padding:1rem;">Archivo vacio.</p>';
-  const h=rows[0],b=rows.slice(1);
-  let s='<div class="excel-table-wrap"><table class="excel-table"><thead><tr>';
-  h.forEach(c=>s+='<th>'+c+'</th>'); s+='</tr></thead><tbody>';
-  b.forEach(row=>{s+='<tr>';h.forEach((_,i)=>s+='<td>'+(row[i]??'')+'</td>');s+='</tr>';});
-  return s+'</tbody></table></div>';
-}
-function fmtSize(b){if(b<1024)return b+' B';if(b<1048576)return (b/1024).toFixed(1)+' KB';return (b/1048576).toFixed(1)+' MB';}
-function docIcon(n){return n.toLowerCase().endsWith('.pdf')?'\u{1F4D5}':'\u{1F4D8}';}
-function loadCertFiles(e){Array.from(e.target.files).forEach(f=>{certFiles.push({name:f.name,size:f.size,url:URL.createObjectURL(f),_file:f});renderCertFiles();});e.target.value='';}
-function removeCertFile(i){certFiles.splice(i,1);renderCertFiles();}
-function renderCertFiles(){
-  const c=document.getElementById('cert-files-container');
-  if(!certFiles.length){c.innerHTML='<div class="empty-hint">Sin certificados.</div>';return;}
-  c.innerHTML=certFiles.map((f,i)=>'<div class="word-file-item"><div class="word-file-info"><span class="word-icon">'+docIcon(f.name)+'</span><div><div class="word-filename">'+f.name+'</div><div class="word-filesize">'+fmtSize(f.size)+'</div></div></div><div class="word-btn-row"><a class="btn-download" href="'+f.url+'" download="'+f.name+'">Descargar</a><button class="btn-remove" onclick="removeCertFile('+i+')">Quitar</button></div></div>').join('');
-}
-function loadRemision(e){
-  const f=e.target.files[0];if(!f)return;
-  if(remisionFile?.url?.startsWith('blob:'))URL.revokeObjectURL(remisionFile.url);
-  remisionFile={name:f.name,size:f.size,url:URL.createObjectURL(f),_file:f};
-  renderRemision();e.target.value='';
-}
-function removeRemision(){remisionFile=null;renderRemision();}
-function renderRemision(){
-  const zone=document.getElementById('remision-zone');
-  if(!remisionFile){zone.className='remision-zone';zone.innerHTML='<div class="remision-hint">No hay remision cargada.</div><label class="upload-btn">Subir Remision<input type="file" accept="*" onchange="loadRemision(event)"></label>';return;}
-  zone.className='remision-zone has-file';
-  zone.innerHTML='<div class="word-file-item" style="margin:0;border:none;background:transparent;padding:0;"><div class="word-file-info"><span class="word-icon">'+docIcon(remisionFile.name)+'</span><div><div class="word-filename">'+remisionFile.name+'</div><div class="word-filesize">'+fmtSize(remisionFile.size)+'</div></div></div><div class="word-btn-row"><a class="btn-download" href="'+remisionFile.url+'" download="'+remisionFile.name+'">Descargar</a><label class="upload-btn" style="padding:4px 10px;font-size:0.76rem;">Reemplazar<input type="file" accept="*" onchange="loadRemision(event)"></label><button class="btn-remove" onclick="removeRemision()">Quitar</button></div></div>';
-}
-function renderClientsGrid(){
-  const grid=document.getElementById('clients-grid'),ids=Object.keys(clients);
-  if(!ids.length){grid.innerHTML='<div class="empty-hint" style="grid-column:1/-1;">No hay clientes.</div>';return;}
-  grid.innerHTML='';
-  ids.forEach(id=>{
-    const c=clients[id],card=document.createElement('div');
-    card.className='client-card';
-    card.innerHTML='<div class="client-card-header"><span class="client-name">'+c.name+'</span><span class="client-badge">CLIENTE</span></div><div class="client-card-body"><span class="client-file-count">'+c.files.length+'</span> archivo(s)<br><small style="color:#8aaac8;">Clic para ver</small></div><button class="btn-delete-client" onclick="deleteClient(event,\''+id+'\')">x</button>';
-    card.addEventListener('click',()=>openModal(id));grid.appendChild(card);
-  });
-}
-function openModal(id){activeClientId=id;document.getElementById('modal-client-title').textContent=clients[id].name;renderModalFiles();document.getElementById('client-modal').classList.add('open');document.body.style.overflow='hidden';}
-function closeModal(){document.getElementById('client-modal').classList.remove('open');document.body.style.overflow='';activeClientId=null;}
-function loadClientFile(e){if(!activeClientId)return;Array.from(e.target.files).forEach(f=>parseExcel(f,rows=>{clients[activeClientId].files.push({name:f.name,rows});renderModalFiles();renderClientsGrid();}));e.target.value='';}
-function renderModalFiles(){
-  const list=document.getElementById('modal-files-list'),c=clients[activeClientId];
-  if(!c||!c.files.length){list.innerHTML='<div class="empty-hint">Sin archivos todavia.</div>';return;}
-  list.innerHTML=c.files.map((f,i)=>'<div class="cost-file-item"><div class="cost-file-header"><span class="cost-file-name">'+f.name+'</span><button class="btn-remove" onclick="removeClientFile('+i+')">Quitar</button></div>'+renderTable(f.rows)+'</div>').join('');
-}
 function checkAlerts(){
   const banner=document.getElementById('alert-banner'),alertText=document.getElementById('alert-text');
   const now=new Date(),soon=new Date(now.getTime()+24*60*60*1000);
