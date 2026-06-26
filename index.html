@@ -112,6 +112,13 @@ main{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:1.5re
 .word-filename{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.88rem;color:var(--blue-deep);}
 .word-filesize{font-size:0.73rem;color:var(--text-muted);}
 .word-btn-row{display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;}
+
+.carpeta-block{background:#fafcff;border:1px solid var(--card-border);border-radius:10px;margin-bottom:1.2rem;overflow:hidden;}
+.carpeta-header{background:var(--card-header);padding:0.75rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:0.5rem;}
+.carpeta-nombre{font-family:'Bebas Neue',cursive;font-size:1.1rem;letter-spacing:2px;color:var(--blue-deep);}
+.carpeta-body{padding:1rem;}
+.carpeta-actions{display:flex;gap:0.5rem;align-items:center;}
+
 .remision-zone{border:1.5px dashed var(--card-border);border-radius:8px;padding:1.5rem;text-align:center;background:#fafcff;margin-top:1rem;}
 .remision-zone.has-file{border-style:solid;border-color:var(--blue-light);text-align:left;background:var(--blue-pale);}
 .remision-hint{color:var(--text-muted);font-size:0.87rem;margin-bottom:0.8rem;}
@@ -311,8 +318,7 @@ footer{background:var(--blue-deep);border-top:1px solid rgba(255,255,255,0.06);p
 </header>
 <nav>
   <a href="#codigos-cliente">📦 Códigos de Cliente</a>
-  <a href="#certificaciones">✅ Certificaciones</a>
-  <a href="#remisiones">📄 Remisiones</a>
+  <a href="#documentos">📁 Documentos</a>
   <a href="#calendario">📅 Entregas</a>
   <a href="#cotizaciones">📝 Cotizaciones</a>
   <a href="#ordenes">🛒 Órdenes</a>
@@ -337,25 +343,13 @@ footer{background:var(--blue-deep);border-top:1px solid rgba(255,255,255,0.06);p
     </div>
   </section>
 
-  <section class="section-card" id="certificaciones">
+    <section class="section-card" id="documentos">
     <div class="section-tab">
-      <span class="section-title">✅ Certificaciones de Calidad</span>
-      <label class="upload-btn">⬆ Agregar Certificado<input type="file" accept="*" multiple onchange="loadCertFiles(event)"></label>
+      <span class="section-title">📁 Documentos</span>
+      <button class="add-btn" onclick="addCarpeta()">+ Nueva Carpeta</button>
     </div>
     <div class="section-body">
-      <p style="color:var(--text-muted);font-size:0.87rem;">Agrega documentos Word o PDF de certificaciones.</p>
-      <div id="cert-files-container"><div class="empty-hint">Sin certificados.</div></div>
-    </div>
-  </section>
-
-  <section class="section-card" id="remisiones">
-    <div class="section-tab"><span class="section-title">📄 Remisiones</span></div>
-    <div class="section-body">
-      <p style="color:var(--text-muted);font-size:0.87rem;">Un solo archivo activo de remisión.</p>
-      <div id="remision-zone" class="remision-zone">
-        <div class="remision-hint">No hay remisión cargada.</div>
-        <label class="upload-btn">⬆ Subir Remisión<input type="file" accept="*" onchange="loadRemision(event)"></label>
-      </div>
+      <div id="carpetas-container"><div class="empty-hint">Sin carpetas. Crea una con "+ Nueva Carpeta".</div></div>
     </div>
   </section>
 
@@ -656,8 +650,8 @@ const USUARIOS = [
   },
   // Ejemplo usuario con acceso restringido:
   {
-    correo:   "fernando@innavapak.com",
-    password: "fer2000",
+    correo:   "vendedor@correo.com",
+    password: "clave123",
     rol:      "usuario",
     ver:      ["clientes","cotizaciones","entregas"]
   },
@@ -677,7 +671,7 @@ function getMexicoTime() {
 // Contrasenas manejadas en bloque USUARIOS arriba
 let currentUser = '';
 let clients = {}, activeClientId = null;
-let certFiles = [], remisionFile = null;
+let carpetas = {}; // {id: {nombre, files:[{name,size,url}]}}
 let deliveries = {}, currentYear = new Date().getFullYear(), currentMonth = new Date().getMonth();
 let cotizaciones = {}, editingCotId = null, cotCounter = 1;
 let ordenes = {}, editingOrdenId = null, ordenCounter = 1;
@@ -715,8 +709,7 @@ function showApp() {
 
 const SECCIONES = {
   clientes:        'codigos-cliente',
-  certificaciones: 'certificaciones',
-  remisiones:      'remisiones',
+  documentos: 'documentos',
   entregas:        'calendario',
   cotizaciones:    'cotizaciones',
   ordenes:         'ordenes',
@@ -754,8 +747,7 @@ window.addEventListener('DOMContentLoaded', function() {
       // Re-renderizar todo después de que el DOM esté completamente pintado
       setTimeout(() => {
         renderClientsGrid();
-        renderCertFiles();
-        renderRemision();
+        renderCarpetas();
         renderCalendar();
         renderUpcoming();
         renderCotList();
@@ -789,7 +781,7 @@ function renderHistorialLocal() {
   const recent = hist.filter(h => new Date(h.fecha).getTime() > weekAgo);
   if (!recent.length) { list.innerHTML='<div class="empty-hint">Sin actividad registrada.</div>'; return; }
   list.innerHTML = recent.map(h => {
-    const fecha = new Date(new Date(h.fecha).getTime() - (6*60*60*1000)).toLocaleString('es-MX');
+    const fecha = new Date(h.fecha).toLocaleString('es-MX', {timeZone:'America/Mexico_City',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
     return '<div class="history-item"><div class="history-time">'+fecha+'</div><div><div class="history-who">'+h.usuario+'</div><div class="history-what">'+h.accion+'</div></div></div>';
   }).join('');
 }
@@ -808,38 +800,75 @@ function renderTable(rows) {
 }
 function fmtSize(b){if(b<1024)return b+' B';if(b<1048576)return (b/1024).toFixed(1)+' KB';return (b/1048576).toFixed(1)+' MB';}
 function docIcon(n){return n.toLowerCase().endsWith('.pdf')?'\u{1F4D5}':'\u{1F4D8}';}
-function loadCertFiles(e){Array.from(e.target.files).forEach(f=>{certFiles.push({name:f.name,size:f.size,url:URL.createObjectURL(f),_file:f});renderCertFiles();});e.target.value='';}
-function removeCertFile(i){certFiles.splice(i,1);renderCertFiles();}
-function renderCertFiles(){
-  const c=document.getElementById('cert-files-container');
-  if(!certFiles.length){c.innerHTML='<div class="empty-hint">Sin certificados.</div>';return;}
-  c.innerHTML=certFiles.map((f,i)=>'<div class="word-file-item"><div class="word-file-info"><span class="word-icon">'+docIcon(f.name)+'</span><div><div class="word-filename">'+f.name+'</div><div class="word-filesize">'+fmtSize(f.size)+'</div></div></div><div class="word-btn-row"><a class="btn-download" href="'+f.url+'" download="'+f.name+'">Descargar</a><button class="btn-remove" onclick="removeCertFile('+i+')">Quitar</button></div></div>').join('');
+function addCarpeta() {
+  const nombre = prompt('Nombre de la carpeta:');
+  if (!nombre || !nombre.trim()) return;
+  const id = 'carp_' + Date.now();
+  carpetas[id] = { nombre: nombre.trim(), files: [] };
+  scheduleAutoSave();
+  renderCarpetas();
 }
-function loadRemision(e){
-  const f=e.target.files[0];if(!f)return;
-  if(remisionFile?.url?.startsWith('blob:'))URL.revokeObjectURL(remisionFile.url);
-  remisionFile={name:f.name,size:f.size,url:URL.createObjectURL(f),_file:f};
-  renderRemision();e.target.value='';
+function renameCarpeta(id) {
+  const nuevo = prompt('Nuevo nombre:', carpetas[id].nombre);
+  if (!nuevo || !nuevo.trim()) return;
+  carpetas[id].nombre = nuevo.trim();
+  scheduleAutoSave();
+  renderCarpetas();
 }
-function removeRemision(){remisionFile=null;renderRemision();}
-function renderRemision(){
-  const zone=document.getElementById('remision-zone');
-  if(!remisionFile){zone.className='remision-zone';zone.innerHTML='<div class="remision-hint">No hay remision cargada.</div><label class="upload-btn">Subir Remision<input type="file" accept="*" onchange="loadRemision(event)"></label>';return;}
-  zone.className='remision-zone has-file';
-  zone.innerHTML='<div class="word-file-item" style="margin:0;border:none;background:transparent;padding:0;"><div class="word-file-info"><span class="word-icon">'+docIcon(remisionFile.name)+'</span><div><div class="word-filename">'+remisionFile.name+'</div><div class="word-filesize">'+fmtSize(remisionFile.size)+'</div></div></div><div class="word-btn-row"><a class="btn-download" href="'+remisionFile.url+'" download="'+remisionFile.name+'">Descargar</a><label class="upload-btn" style="padding:4px 10px;font-size:0.76rem;">Reemplazar<input type="file" accept="*" onchange="loadRemision(event)"></label><button class="btn-remove" onclick="removeRemision()">Quitar</button></div></div>';
+function deleteCarpeta(id) {
+  if (!confirm('¿Eliminar carpeta "' + carpetas[id].nombre + '" y todos sus archivos?')) return;
+  delete carpetas[id];
+  scheduleAutoSave();
+  renderCarpetas();
 }
-
-// ═══════════════════════════════════════════════════════════════════
-//  CLIENTES + SISTEMA LOYVERSE
-// ═══════════════════════════════════════════════════════════════════
-
-// Estructura de cliente extendida:
-// clients[id] = {
-//   name, files,
-//   perfil: {rfc, contact, phone, email, city, address, notes},
-//   inventario: [{id, name, sku, cat, price, stock, minStock, unit, desc}],
-//   ventas: [{id, date, items:[{prodId,name,qty,price}], total, notes}]
-// }
+function loadCarpetaFile(e, id) {
+  Array.from(e.target.files).forEach(f => {
+    carpetas[id].files.push({ name: f.name, size: f.size, url: URL.createObjectURL(f), _file: f });
+  });
+  scheduleAutoSave();
+  renderCarpetas();
+  e.target.value = '';
+}
+function removeCarpetaFile(carpId, fileIdx) {
+  carpetas[carpId].files.splice(fileIdx, 1);
+  scheduleAutoSave();
+  renderCarpetas();
+}
+function renderCarpetas() {
+  const container = document.getElementById('carpetas-container');
+  if (!container) return;
+  const ids = Object.keys(carpetas);
+  if (!ids.length) {
+    container.innerHTML = '<div class="empty-hint">Sin carpetas. Crea una con "+ Nueva Carpeta".</div>';
+    return;
+  }
+  container.innerHTML = ids.map(id => {
+    const carp = carpetas[id];
+    const filesHtml = carp.files.length
+      ? carp.files.map((f, i) => `<div class="word-file-item">
+          <div class="word-file-info"><span class="word-icon">${docIcon(f.name)}</span>
+            <div><div class="word-filename">${f.name}</div><div class="word-filesize">${fmtSize(f.size)}</div></div>
+          </div>
+          <div class="word-btn-row">
+            ${f.url ? `<a class="btn-download" href="${f.url}" download="${f.name}">Descargar</a>` : ''}
+            <button class="btn-remove" onclick="removeCarpetaFile('${id}',${i})">Quitar</button>
+          </div></div>`).join('')
+      : '<div class="empty-hint" style="padding:0.5rem 0;">Sin archivos.</div>';
+    return `<div class="carpeta-block">
+      <div class="carpeta-header">
+        <span class="carpeta-nombre">📁 ${carp.nombre}</span>
+        <div class="carpeta-actions">
+          <label class="upload-btn" style="padding:4px 10px;font-size:0.76rem;">
+            ⬆ Subir<input type="file" accept="*" multiple onchange="loadCarpetaFile(event,'${id}')">
+          </label>
+          <button class="add-btn" style="padding:4px 10px;font-size:0.76rem;" onclick="renameCarpeta('${id}')">✏ Renombrar</button>
+          <button class="del-delete-btn" style="padding:4px 10px;font-size:0.76rem;" onclick="deleteCarpeta('${id}')">Eliminar</button>
+        </div>
+      </div>
+      <div class="carpeta-body">${filesHtml}</div>
+    </div>`;
+  }).join('');
+}
 
 function ensureClientData(id) {
   if (!clients[id]) return;
@@ -1314,8 +1343,8 @@ function renderModalFiles() {
 
 
 function buildPayload() {
-  const certMeta = (certFiles||[]).map(f => ({name: f.name, size: f.size || 0}));
-  const remisionMeta = remisionFile ? {name: remisionFile.name, size: remisionFile.size || 0} : null;
+  const carpetasMeta = Object.entries(carpetas).reduce((obj,[id,c])=>{obj[id]={nombre:c.nombre,files:c.files.map(f=>({name:f.name,size:f.size||0}))};return obj;},{});
+  
   const clientsData = Object.entries(clients).map(([id, c]) => ({
     id,
     name: c.name,
@@ -1326,8 +1355,7 @@ function buildPayload() {
   }));
   const historialData = (window.historialLocal || []).slice(0, 100);
   return {
-    clients: clientsData, certFiles: certMeta,
-    remision: remisionMeta, deliveries, cotizaciones, ordenes,
+    clients: clientsData, carpetas: carpetasMeta, deliveries, cotizaciones, ordenes,
     historial: historialData,
     saved_at: new Date().toISOString()
   };
@@ -1351,8 +1379,7 @@ async function saveData() {
     || Object.keys(deliveries).length > 0
     || Object.keys(cotizaciones).length > 0
     || Object.keys(ordenes).length > 0
-    || certFiles.length > 0
-    || remisionFile !== null;
+    || Object.keys(carpetas).length > 0;
   if (!hayDatos && window.driveHadData) {
     statusEl.textContent = '⚠ Guardado bloqueado — datos vacíos';
     statusEl.className = 'save-status err';
@@ -1414,8 +1441,8 @@ async function loadData() {
     }
     const saved = JSON.parse(text);
     if (saved.clients) { saved.clients.forEach(c => { clients[c.id] = {name: c.name, files: (c.files||[]).map(f => ({name: f.name, rows: f.rows||[], size: f.size||0})), perfil: c.perfil||{}, inventario: c.inventario||[], ventas: c.ventas||[]}; }); }
-    if (saved.certFiles) { saved.certFiles.forEach(f => certFiles.push({name: f.name, size: f.size||0})); }
-    if (saved.remision) { remisionFile = {name: saved.remision.name, size: saved.remision.size||0}; }
+    if (saved.carpetas) { Object.entries(saved.carpetas).forEach(([id,c]) => { carpetas[id] = {nombre: c.nombre, files: (c.files||[]).map(f=>({name:f.name,size:f.size||0}))}; }); }
+    
     if (saved.deliveries) { deliveries = saved.deliveries; }
     if (saved.cotizaciones) { cotizaciones = saved.cotizaciones; }
     if (saved.ordenes) { ordenes = saved.ordenes; }
@@ -1423,8 +1450,7 @@ async function loadData() {
     // Forzar re-render completo después de cargar — con delay para que el DOM esté listo
     setTimeout(() => {
       renderClientsGrid();
-      renderCertFiles();
-      renderRemision();
+      renderCarpetas();
       renderCalendar();
       renderUpcoming();
       renderCotList();
@@ -1437,7 +1463,7 @@ async function loadData() {
     const hayDatos = Object.keys(clients).length > 0
       || Object.keys(deliveries).length > 0
       || Object.keys(cotizaciones).length > 0
-      || certFiles.length > 0;
+      || Object.keys(carpetas).length > 0;
     window.driveHadData = hayDatos;
     statusEl.textContent = '✓ Cargado desde Drive ' + getMexicoTime();
     statusEl.className = 'save-status ok';
@@ -1454,11 +1480,9 @@ async function saveToLocalDisk() {
   try {
     // Build the same payload as saveData but save to local file
     const certMeta = [];
-    for (const f of certFiles) { certMeta.push({name: f.name, size: f.size || 0}); }
-    let remisionMeta = null;
-    if (remisionFile) { remisionMeta = {name: remisionFile.name, size: remisionFile.size || 0}; }
+        let remisionMeta = null;
     const clientsData = Object.entries(clients).map(([id, c]) => ({id, name: c.name, files: (c.files||[]).map(f => ({name: f.name, rows: f.rows||[], size: f.size||0})), perfil: c.perfil||{}, inventario: c.inventario||[], ventas: c.ventas||[]}));
-    const payload = {clients: clientsData, certFiles: certMeta, remision: remisionMeta, deliveries, cotizaciones, ordenes, saved_at: new Date().toISOString()};
+    const payload = {clients: clientsData, deliveries, cotizaciones, ordenes, saved_at: new Date().toISOString()};
     const json = JSON.stringify(payload, null, 2);
     const blob = new Blob([json], {type: 'application/json'});
     // Use File System Access API to save to chosen location
